@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect } from 'react';
-import { useForm, useFormContext } from 'react-hook-form';
+import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -95,11 +95,10 @@ export default function CodeSnippetsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
+          <FormProvider {...form}>
             <form
               action={formAction}
               className="space-y-6"
-              onSubmit={form.handleSubmit(() => formAction(new FormData(form.control._formRef.current)))}
             >
               <FormField
                 control={form.control}
@@ -147,7 +146,7 @@ export default function CodeSnippetsPage() {
 
               <SubmitButton />
             </form>
-          </Form>
+          </FormProvider>
         </CardContent>
       </Card>
       <Card>
