@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   Server,
   Settings,
+  ShieldCheck,
   Trophy,
 } from 'lucide-react';
 
@@ -42,6 +43,7 @@ const navItems = [
   { href: '/mock-server', label: 'Mock Server', icon: Server },
   { href: '/snippets', label: 'Code Snippets', icon: FileCode },
   { href: '/docs', label: 'Auto-Docs', icon: BookText },
+  { href: '/testing', label: 'AI-Driven Testing', icon: ShieldCheck },
   { href: '/challenges', label: 'Challenges', icon: Trophy },
 ];
 

@@ -25,59 +25,183 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { useState } from 'react';
+import { Key, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
-const mockResponse = {
-  status: 200,
-  statusText: 'OK',
-  time: '128ms',
-  size: '1.2 KB',
-  headers: {
-    'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'public, max-age=60, s-maxage=60',
-    'x-powered-by': 'RaXplorer Mock Engine',
-  },
-  body: JSON.stringify(
-    {
-      id: 1,
-      name: 'Leanne Graham',
-      username: 'Bret',
-      email: 'Sincere@april.biz',
-      address: {
-        street: 'Kulas Light',
-        suite: 'Apt. 556',
-        city: 'Gwenborough',
-        zipcode: '92998-3874',
-        geo: {
-          lat: '-37.3159',
-          lng: '81.1496',
-        },
-      },
-    },
-    null,
-    2
-  ),
+type KeyValue = {
+  key: string;
+  value: string;
+};
+
+type ResponseData = {
+  status: number;
+  statusText: string;
+  time: string;
+  size: string;
+  headers: Record<string, string>;
+  body: any;
 };
 
 export default function ApiPlaygroundPage() {
-  const [response, setResponse] = useState<typeof mockResponse | null>(null);
+  const [method, setMethod] = useState('GET');
+  const [url, setUrl] = useState('https://jsonplaceholder.typicode.com/users/1');
+  const [queryParams, setQueryParams] = useState<KeyValue[]>([]);
+  const [headers, setHeaders] = useState<KeyValue[]>([]);
+  const [body, setBody] = useState('');
+  const [response, setResponse] = useState<ResponseData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setResponse(mockResponse);
+    setResponse(null);
+
+    const startTime = Date.now();
+    let res;
+    try {
+      const requestHeaders = new Headers();
+      headers.forEach(header => {
+        if (header.key && header.value) {
+          requestHeaders.append(header.key, header.value);
+        }
+      });
+      if (!['GET', 'HEAD'].includes(method) && body) {
+        requestHeaders.append('Content-Type', 'application/json');
+      }
+
+      let requestUrl = url;
+      if (queryParams.length > 0) {
+        const params = new URLSearchParams();
+        queryParams.forEach(param => {
+          if (param.key) {
+            params.append(param.key, param.value);
+          }
+        });
+        requestUrl += `?${params.toString()}`;
+      }
+
+      res = await fetch(requestUrl, {
+        method,
+        headers: requestHeaders,
+        body: !['GET', 'HEAD'].includes(method) ? body : undefined,
+      });
+
+      const responseBody = await res.json();
+      const endTime = Date.now();
+      const responseSize = JSON.stringify(responseBody).length;
+
+      const responseHeaders: Record<string, string> = {};
+      res.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+
+      setResponse({
+        status: res.status,
+        statusText: res.statusText,
+        time: `${endTime - startTime}ms`,
+        size: `${(responseSize / 1024).toFixed(2)} KB`,
+        headers: responseHeaders,
+        body: JSON.stringify(responseBody, null, 2),
+      });
+    } catch (error) {
+      const endTime = Date.now();
+      setResponse({
+        status: 500,
+        statusText: 'Client Error',
+        time: `${endTime - startTime}ms`,
+        size: '0 KB',
+        headers: {},
+        body: JSON.stringify(
+          {
+            error:
+              error instanceof Error ? error.message : 'An unknown error occurred',
+          },
+          null,
+          2
+        ),
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
+
+  const addRow = (
+    setter: React.Dispatch<React.SetStateAction<KeyValue[]>>
+  ) => {
+    setter(prev => [...prev, { key: '', value: '' }]);
+  };
+
+  const updateRow = (
+    setter: React.Dispatch<React.SetStateAction<KeyValue[]>>,
+    index: number,
+    field: 'key' | 'value',
+    val: string
+  ) => {
+    setter(prev =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: val } : item))
+    );
+  };
+
+  const KeyValueTable = ({
+    data,
+    setter,
+    keyPlaceholder,
+    valuePlaceholder,
+  }: {
+    data: KeyValue[];
+    setter: React.Dispatch<React.SetStateAction<KeyValue[]>>;
+    keyPlaceholder: string;
+    valuePlaceholder: string;
+  }) => (
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Key</TableHead>
+            <TableHead>Value</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((item, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                <Input
+                  value={item.key}
+                  onChange={e => updateRow(setter, index, 'key', e.target.value)}
+                  placeholder={keyPlaceholder}
+                  className="font-code"
+                />
+              </TableCell>
+              <TableCell>
+                <Input
+                  value={item.value}
+                  onChange={e =>
+                    updateRow(setter, index, 'value', e.target.value)
+                  }
+                  placeholder={valuePlaceholder}
+                  className="font-code"
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => addRow(setter)}
+        className="mt-2"
+      >
+        Add Row
+      </Button>
+    </>
+  );
 
   return (
     <div className="flex h-full flex-col gap-6">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Select defaultValue="GET">
+            <Select value={method} onValueChange={setMethod}>
               <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Method" />
               </SelectTrigger>
@@ -90,10 +214,12 @@ export default function ApiPlaygroundPage() {
               </SelectContent>
             </Select>
             <Input
-              defaultValue="https://api.raxplorer.app/users/1"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
               placeholder="https://api.example.com/v1/users"
             />
             <Button onClick={handleSend} disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLoading ? 'Sending...' : 'Send'}
             </Button>
           </div>
@@ -106,19 +232,28 @@ export default function ApiPlaygroundPage() {
               <TabsTrigger value="body">Body</TabsTrigger>
             </TabsList>
             <TabsContent value="params" className="mt-4">
-              <p className="text-sm text-muted-foreground">
-                Query parameters to be sent with the request.
-              </p>
+              <KeyValueTable
+                data={queryParams}
+                setter={setQueryParams}
+                keyPlaceholder="page"
+                valuePlaceholder="1"
+              />
             </TabsContent>
             <TabsContent value="headers" className="mt-4">
-              <p className="text-sm text-muted-foreground">
-                Headers to be sent with the request.
-              </p>
+              <KeyValueTable
+                data={headers}
+                setter={setHeaders}
+                keyPlaceholder="Authorization"
+                valuePlaceholder="Bearer ..."
+              />
             </TabsContent>
             <TabsContent value="body" className="mt-4">
               <Textarea
                 placeholder='{ "key": "value" }'
                 className="min-h-[200px] font-code"
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                disabled={method === 'GET' || method === 'HEAD'}
               />
             </TabsContent>
           </Tabs>
@@ -127,6 +262,7 @@ export default function ApiPlaygroundPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center rounded-lg border p-8">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           <p className="text-muted-foreground">Loading response...</p>
         </div>
       )}
@@ -138,7 +274,11 @@ export default function ApiPlaygroundPage() {
             <div className="flex items-center gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <span
-                  className={`h-2 w-2 rounded-full ${response.status === 200 ? 'bg-green-500' : 'bg-red-500'}`}
+                  className={`h-2 w-2 rounded-full ${
+                    response.status >= 200 && response.status < 300
+                      ? 'bg-green-500'
+                      : 'bg-red-500'
+                  }`}
                 ></span>
                 <span>
                   Status: {response.status} {response.statusText}
@@ -170,12 +310,17 @@ export default function ApiPlaygroundPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Object.entries(response.headers).map(([key, value]) => (
-                      <TableRow key={key}>
-                        <TableCell className="font-medium">{key}</TableCell>
-                        <TableCell>{value}</TableCell>
-                      </TableRow>
-                    ))}
+                    {Object.entries(response.headers).map(
+                      ([key, value]: [
+                        string,
+                        string,
+                      ]) => (
+                        <TableRow key={key}>
+                          <TableCell className="font-medium">{key}</TableCell>
+                          <TableCell>{value}</TableCell>
+                        </TableRow>
+                      )
+                    )}
                   </TableBody>
                 </Table>
               </TabsContent>
