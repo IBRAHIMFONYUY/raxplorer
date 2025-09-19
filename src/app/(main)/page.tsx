@@ -26,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useState, useEffect, useActionState } from 'react';
+import { useState, useEffect, useActionState, useRef } from 'react';
 import { Clock, History, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -114,53 +114,24 @@ export default function ApiPlaygroundPage() {
   const [bearerToken, setBearerToken] = useState('');
 
   const [aiState, aiFormAction, isAiPending] = useActionState(generateRequestAction, { data: null });
+  const previousAiData = useRef<GenerateRequestOutput | null>(null);
 
-  useEffect(() => {
-    if (aiState?.data) {
-      const { method, url, queryParams, headers, body } = aiState.data as GenerateRequestOutput;
-      setMethod(method);
-      setUrl(url);
-      setQueryParams(queryParams || []);
-      setHeaders(headers || []);
-      setBody(body || '');
+
+  const handleSend = async (
+    requestData: {
+      method: string,
+      url: string,
+      queryParams: KeyValue[],
+      headers: KeyValue[],
+      body: string,
+      authMethod: string,
+      bearerToken: string
     }
-  }, [aiState]);
-
-
-  useEffect(() => {
-    const challengeId = searchParams.get('challengeId');
-    if (challengeId) {
-      setMethod(searchParams.get('method') || 'GET');
-      setUrl(searchParams.get('url') || '');
-      setBody(searchParams.get('body') || '');
-
-      const headersParam = searchParams.get('headers');
-      if (headersParam) {
-        try {
-          setHeaders(JSON.parse(headersParam));
-        } catch (e) {
-          setHeaders([]);
-        }
-      } else {
-        setHeaders([]);
-      }
-
-      const queryParamsParam = searchParams.get('queryParams');
-      if (queryParamsParam) {
-        try {
-          setQueryParams(JSON.parse(queryParamsParam));
-        } catch (e) {
-          setQueryParams([]);
-        }
-      } else {
-        setQueryParams([]);
-      }
-    }
-  }, [searchParams]);
-
-  const handleSend = async () => {
+  ) => {
     setIsLoading(true);
     setResponse(null);
+
+    const { method, url, queryParams, headers, body, authMethod, bearerToken } = requestData;
 
     const timing = {
       start: Date.now(),
@@ -172,9 +143,6 @@ export default function ApiPlaygroundPage() {
       total: 0,
     };
 
-    let res;
-    let finalStatus = 500;
-    let finalStatusText = 'Client Error';
     let fullResponse: ResponseData | null = null;
     try {
       const requestHeaders = new Headers();
@@ -204,9 +172,9 @@ export default function ApiPlaygroundPage() {
         });
         requestUrl += `?${params.toString()}`;
       }
-
+      
       timing.dnsLookup = Date.now();
-      res = await fetch(requestUrl, {
+      const res = await fetch(requestUrl, {
         method,
         headers: requestHeaders,
         body: !['GET', 'HEAD'].includes(method) ? body : undefined,
@@ -214,8 +182,6 @@ export default function ApiPlaygroundPage() {
       timing.tcpConnection = Date.now();
       timing.tlsHandshake = Date.now();
       timing.firstByte = Date.now();
-      finalStatus = res.status;
-      finalStatusText = res.statusText;
 
       const responseText = await res.text();
       timing.contentTransfer = Date.now();
@@ -278,6 +244,66 @@ export default function ApiPlaygroundPage() {
       setIsLoading(false);
     }
   };
+
+  const handleManualSend = () => {
+    handleSend({ method, url, queryParams, headers, body, authMethod, bearerToken });
+  }
+
+  useEffect(() => {
+    if (aiState?.data && aiState.data !== previousAiData.current) {
+      const { method, url, queryParams, headers, body } = aiState.data as GenerateRequestOutput;
+      setMethod(method);
+      setUrl(url);
+      setQueryParams(queryParams || []);
+      setHeaders(headers || []);
+      setBody(body || '');
+      
+      // Auto-submit
+      handleSend({
+        method,
+        url,
+        queryParams: queryParams || [],
+        headers: headers || [],
+        body: body || '',
+        authMethod: 'none', // Assuming AI gen doesn't set auth yet
+        bearerToken: ''
+      });
+
+      previousAiData.current = aiState.data;
+    }
+  }, [aiState]);
+
+
+  useEffect(() => {
+    const challengeId = searchParams.get('challengeId');
+    if (challengeId) {
+      setMethod(searchParams.get('method') || 'GET');
+      setUrl(searchParams.get('url') || '');
+      setBody(searchParams.get('body') || '');
+
+      const headersParam = searchParams.get('headers');
+      if (headersParam) {
+        try {
+          setHeaders(JSON.parse(headersParam));
+        } catch (e) {
+          setHeaders([]);
+        }
+      } else {
+        setHeaders([]);
+      }
+
+      const queryParamsParam = searchParams.get('queryParams');
+      if (queryParamsParam) {
+        try {
+          setQueryParams(JSON.parse(queryParamsParam));
+        } catch (e) {
+          setQueryParams([]);
+        }
+      } else {
+        setQueryParams([]);
+      }
+    }
+  }, [searchParams]);
 
   const addToHistory = (
     method: string,
@@ -578,226 +604,224 @@ export default function ApiPlaygroundPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col w-full space-y-4">
-        <Card>
-          <CardHeader>
-             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="text-primary" />
-              AI Assistant
-            </CardTitle>
-            <CardDescription>
-              Describe the request you want to make in plain English, and the AI will build it for you.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={aiFormAction} className="flex items-center gap-2">
-              <Input
-                name="prompt"
-                placeholder='e.g., "Get the first 5 comments for post ID 1 from jsonplaceholder"'
-                className="text-base flex-1"
-                disabled={isAiPending}
-              />
-              <Button type="submit" disabled={isAiPending}>
-                {isAiPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                {isAiPending ? 'Generating...' : 'Generate'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+           <CardTitle className="flex items-center gap-2">
+            <Sparkles className="text-primary" />
+            AI Assistant
+          </CardTitle>
+          <CardDescription>
+            Describe the request you want to make in plain English, and the AI will build and run it for you.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={aiFormAction} className="flex items-center gap-2">
+            <Input
+              name="prompt"
+              placeholder='e.g., "Get the first 5 comments for post ID 1 from jsonplaceholder"'
+              className="text-base flex-1"
+              disabled={isAiPending}
+            />
+            <Button type="submit" disabled={isAiPending}>
+              {isAiPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {isAiPending ? 'Generating...' : 'Generate & Run'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Request</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 mb-4">
-              <Select value={method} onValueChange={setMethod}>
-                <SelectTrigger className="w-[120px] font-bold">
-                  <SelectValue placeholder="Method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GET">GET</SelectItem>
-                  <SelectItem value="POST">POST</SelectItem>
-                  <SelectItem value="PUT">PUT</SelectItem>
-                  <SelectItem value="PATCH">PATCH</SelectItem>
-                  <SelectItem value="DELETE">DELETE</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                value={url}
-                onChange={e => setUrl(e.target.value)}
-                placeholder="https://api.example.com/v1/users"
-                className="text-base flex-1"
+      <Card>
+        <CardHeader>
+          <CardTitle>Request</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-stretch gap-2 mb-4">
+            <Select value={method} onValueChange={setMethod}>
+              <SelectTrigger className="w-full font-bold md:w-[120px]">
+                <SelectValue placeholder="Method" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="GET">GET</SelectItem>
+                <SelectItem value="POST">POST</SelectItem>
+                <SelectItem value="PUT">PUT</SelectItem>
+                <SelectItem value="PATCH">PATCH</SelectItem>
+                <SelectItem value="DELETE">DELETE</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="https://api.example.com/v1/users"
+              className="text-base flex-1 min-w-[200px]"
+            />
+            <Button onClick={handleManualSend} disabled={isLoading} className="w-full md:w-auto">
+              {isLoading && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {isLoading ? 'Sending...' : 'Send'}
+            </Button>
+          </div>
+          <Tabs defaultValue="params" className="w-full">
+            <TabsList>
+              <TabsTrigger value="params">Params</TabsTrigger>
+              <TabsTrigger value="auth">Authorization</TabsTrigger>
+              <TabsTrigger value="headers">Headers</TabsTrigger>
+              <TabsTrigger value="body">Body</TabsTrigger>
+            </TabsList>
+            <TabsContent value="params" className="mt-4">
+              <KeyValueTable
+                data={queryParams}
+                setter={setQueryParams}
+                keyPlaceholder="page"
+                valuePlaceholder="1"
               />
-              <Button onClick={handleSend} disabled={isLoading}>
-                {isLoading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            </TabsContent>
+            <TabsContent value="auth" className="mt-4">
+              <div className="w-full md:w-1/2 space-y-4">
+                <Select value={authMethod} onValueChange={setAuthMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Auth Method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Auth</SelectItem>
+                    <SelectItem value="bearer">Bearer Token</SelectItem>
+                  </SelectContent>
+                </Select>
+                {authMethod === 'bearer' && (
+                  <Input
+                    placeholder="Token"
+                    value={bearerToken}
+                    onChange={e => setBearerToken(e.target.value)}
+                    className="font-code"
+                  />
                 )}
-                {isLoading ? 'Sending...' : 'Send'}
-              </Button>
+              </div>
+            </TabsContent>
+            <TabsContent value="headers" className="mt-4">
+              <KeyValueTable
+                data={headers}
+                setter={setHeaders}
+                keyPlaceholder="Authorization"
+                valuePlaceholder="Bearer ..."
+                isHeaders={true}
+              />
+            </TabsContent>
+            <TabsContent value="body" className="mt-4">
+              <Textarea
+                placeholder='{ "key": "value" }'
+                className="h-40 font-code"
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                disabled={method === 'GET' || method === 'HEAD'}
+              />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Response</CardTitle>
+          {response && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    response.status >= 200 && response.status < 300
+                      ? 'bg-green-500'
+                      : 'bg-red-500'
+                  }`}
+                ></span>
+                <span>
+                  Status: {response.status} {response.statusText}
+                </span>
+              </div>
+              <span>Time: {response.time}</span>
+              <span>Size: {response.size}</span>
             </div>
-            <Tabs defaultValue="params" className="w-full">
+          )}
+        </CardHeader>
+        <CardContent>
+          {isLoading && !response && (
+            <div className="flex items-center justify-center min-h-[200px]">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <p>Loading response...</p>
+            </div>
+          )}
+          {!isLoading && !response && (
+            <div className="min-h-[200px] flex items-center justify-center text-muted-foreground">
+              <p>Click "Send" to get a response</p>
+            </div>
+          )}
+          {response && (
+            <Tabs defaultValue="body" className="w-full">
               <TabsList>
-                <TabsTrigger value="params">Params</TabsTrigger>
-                <TabsTrigger value="auth">Authorization</TabsTrigger>
-                <TabsTrigger value="headers">Headers</TabsTrigger>
                 <TabsTrigger value="body">Body</TabsTrigger>
+                <TabsTrigger value="headers">Headers</TabsTrigger>
+                <TabsTrigger value="timing">Timing</TabsTrigger>
               </TabsList>
-              <TabsContent value="params" className="mt-4">
-                <KeyValueTable
-                  data={queryParams}
-                  setter={setQueryParams}
-                  keyPlaceholder="page"
-                  valuePlaceholder="1"
-                />
-              </TabsContent>
-              <TabsContent value="auth" className="mt-4">
-                <div className="w-full md:w-1/2 space-y-4">
-                  <Select value={authMethod} onValueChange={setAuthMethod}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Auth Method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Auth</SelectItem>
-                      <SelectItem value="bearer">Bearer Token</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {authMethod === 'bearer' && (
-                    <Input
-                      placeholder="Token"
-                      value={bearerToken}
-                      onChange={e => setBearerToken(e.target.value)}
-                      className="font-code"
-                    />
-                  )}
-                </div>
+              <TabsContent value="body" className="mt-4">
+                <ScrollArea className="h-48">
+                  <pre className="w-full overflow-auto rounded-md bg-secondary p-4 text-sm">
+                    <code className="font-code text-secondary-foreground">
+                      {response.body}
+                    </code>
+                  </pre>
+                </ScrollArea>
               </TabsContent>
               <TabsContent value="headers" className="mt-4">
-                <KeyValueTable
-                  data={headers}
-                  setter={setHeaders}
-                  keyPlaceholder="Authorization"
-                  valuePlaceholder="Bearer ..."
-                  isHeaders={true}
-                />
+                <ScrollArea className="h-48">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Key</TableHead>
+                        <TableHead>Value</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(response.headers).map(
+                        ([key, value]: [string, string]) => (
+                          <TableRow key={key}>
+                            <TableCell className="font-medium">{key}</TableCell>
+                            <TableCell>{value}</TableCell>
+                          </TableRow>
+                        )
+                      )}
+                    </TableBody>
+                  </Table>
+                 </ScrollArea>
               </TabsContent>
-              <TabsContent value="body" className="mt-4">
-                <Textarea
-                  placeholder='{ "key": "value" }'
-                  className="h-40 font-code"
-                  value={body}
-                  onChange={e => setBody(e.target.value)}
-                  disabled={method === 'GET' || method === 'HEAD'}
-                />
+              <TabsContent value="timing" className="mt-4">
+                <ScrollArea className="h-48">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Phase</TableHead>
+                        <TableHead>Duration (ms)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(response.timing).map(
+                        ([phase, duration]) => (
+                          <TableRow key={phase}>
+                            <TableCell className="font-medium">
+                              {phase}
+                            </TableCell>
+                            <TableCell>{duration.toFixed(2)}</TableCell>
+                          </TableRow>
+                        )
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
               </TabsContent>
             </Tabs>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Response</CardTitle>
-            {response && (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      response.status >= 200 && response.status < 300
-                        ? 'bg-green-500'
-                        : 'bg-red-500'
-                    }`}
-                  ></span>
-                  <span>
-                    Status: {response.status} {response.statusText}
-                  </span>
-                </div>
-                <span>Time: {response.time}</span>
-                <span>Size: {response.size}</span>
-              </div>
-            )}
-          </CardHeader>
-          <CardContent>
-            {isLoading && (
-              <div className="flex items-center justify-center min-h-[200px]">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                <p>Loading response...</p>
-              </div>
-            )}
-            {!isLoading && !response && (
-              <div className="min-h-[200px] flex items-center justify-center text-muted-foreground">
-                <p>Click "Send" to get a response</p>
-              </div>
-            )}
-            {response && (
-              <Tabs defaultValue="body" className="w-full">
-                <TabsList>
-                  <TabsTrigger value="body">Body</TabsTrigger>
-                  <TabsTrigger value="headers">Headers</TabsTrigger>
-                  <TabsTrigger value="timing">Timing</TabsTrigger>
-                </TabsList>
-                <TabsContent value="body" className="mt-4">
-                  <ScrollArea className="h-48">
-                    <pre className="w-full overflow-auto rounded-md bg-secondary p-4 text-sm">
-                      <code className="font-code text-secondary-foreground">
-                        {response.body}
-                      </code>
-                    </pre>
-                  </ScrollArea>
-                </TabsContent>
-                <TabsContent value="headers" className="mt-4">
-                  <ScrollArea className="h-48">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Key</TableHead>
-                          <TableHead>Value</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(response.headers).map(
-                          ([key, value]: [string, string]) => (
-                            <TableRow key={key}>
-                              <TableCell className="font-medium">{key}</TableCell>
-                              <TableCell>{value}</TableCell>
-                            </TableRow>
-                          )
-                        )}
-                      </TableBody>
-                    </Table>
-                   </ScrollArea>
-                </TabsContent>
-                <TabsContent value="timing" className="mt-4">
-                  <ScrollArea className="h-48">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Phase</TableHead>
-                          <TableHead>Duration (ms)</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(response.timing).map(
-                          ([phase, duration]) => (
-                            <TableRow key={phase}>
-                              <TableCell className="font-medium">
-                                {phase}
-                              </TableCell>
-                              <TableCell>{duration.toFixed(2)}</TableCell>
-                            </TableRow>
-                          )
-                        )}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
-                </TabsContent>
-              </Tabs>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
         
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="history">
