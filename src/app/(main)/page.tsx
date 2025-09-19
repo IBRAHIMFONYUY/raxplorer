@@ -25,8 +25,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Key, useState } from 'react';
+import { Key, useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 type KeyValue = {
   key: string;
@@ -43,6 +44,7 @@ type ResponseData = {
 };
 
 export default function ApiPlaygroundPage() {
+  const searchParams = useSearchParams();
   const [method, setMethod] = useState('GET');
   const [url, setUrl] = useState('https://jsonplaceholder.typicode.com/users/1');
   const [queryParams, setQueryParams] = useState<KeyValue[]>([]);
@@ -50,6 +52,37 @@ export default function ApiPlaygroundPage() {
   const [body, setBody] = useState('');
   const [response, setResponse] = useState<ResponseData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const challengeId = searchParams.get('challengeId');
+    if (challengeId) {
+      setMethod(searchParams.get('method') || 'GET');
+      setUrl(searchParams.get('url') || '');
+      setBody(searchParams.get('body') || '');
+
+      const headersParam = searchParams.get('headers');
+      if (headersParam) {
+        try {
+          setHeaders(JSON.parse(headersParam));
+        } catch (e) {
+          setHeaders([]);
+        }
+      } else {
+        setHeaders([]);
+      }
+
+      const queryParamsParam = searchParams.get('queryParams');
+      if (queryParamsParam) {
+        try {
+          setQueryParams(JSON.parse(queryParamsParam));
+        } catch (e) {
+          setQueryParams([]);
+        }
+      } else {
+        setQueryParams([]);
+      }
+    }
+  }, [searchParams]);
 
   const handleSend = async () => {
     setIsLoading(true);
