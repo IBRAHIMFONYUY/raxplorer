@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormState } from 'react-dom';
+import { useActionState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,7 +30,6 @@ import {
 } from '@/components/ui/select';
 
 import { generateSnippetAction } from './actions';
-import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -65,7 +64,7 @@ function SubmitButton() {
 }
 
 export default function CodeSnippetsPage() {
-  const [state, formAction] = useFormState(generateSnippetAction, initialState);
+  const [state, formAction] = useActionState(generateSnippetAction, initialState);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({

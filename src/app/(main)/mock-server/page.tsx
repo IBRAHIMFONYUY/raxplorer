@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormState } from 'react-dom';
+import { useActionState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,7 +22,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { generateMockServerAction } from './actions';
-import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -56,7 +55,7 @@ function SubmitButton() {
 }
 
 export default function MockServerPage() {
-  const [state, formAction] = useFormState(
+  const [state, formAction] = useActionState(
     generateMockServerAction,
     initialState
   );
