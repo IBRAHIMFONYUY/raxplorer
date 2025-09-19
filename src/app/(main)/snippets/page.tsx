@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -48,7 +48,7 @@ const initialState = {
 };
 
 function SubmitButton() {
-  const { formState } = useForm();
+  const { formState } = useFormContext();
   return (
     <Button type="submit" disabled={formState.isSubmitting}>
       {formState.isSubmitting ? (
@@ -96,7 +96,11 @@ export default function CodeSnippetsPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form action={formAction} className="space-y-6">
+            <form
+              action={formAction}
+              className="space-y-6"
+              onSubmit={form.handleSubmit(() => formAction(new FormData(form.control._formRef.current)))}
+            >
               <FormField
                 control={form.control}
                 name="prompt"
@@ -123,6 +127,7 @@ export default function CodeSnippetsPage() {
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
+                      name={field.name}
                     >
                       <FormControl>
                         <SelectTrigger>
