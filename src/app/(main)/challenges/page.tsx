@@ -99,7 +99,7 @@ async function generateChallengeAction() {
 }
 
 const ChallengeCard = ({ challenge, isAiGenerated = false }: { challenge: any, isAiGenerated?: boolean }) => (
-  <Card key={challenge.id} className="flex flex-col">
+  <Card className="flex flex-col">
     <CardHeader>
       <div className="flex items-center justify-between">
         <CardTitle className="flex items-center gap-2">
@@ -175,7 +175,7 @@ export default function ChallengesPage() {
            <ChallengeCard challenge={aiState.data as GenerateChallengeOutput} isAiGenerated={true} />
         )}
         {challenges.map((challenge) => (
-          <ChallengeCard challenge={challenge} />
+          <ChallengeCard key={challenge.id} challenge={challenge} />
         ))}
       </div>
     </div>
