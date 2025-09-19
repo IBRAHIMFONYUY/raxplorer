@@ -55,6 +55,17 @@ export default function MainLayout({
 }) {
   const pathname = usePathname();
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+  
+  // This key will be used to force a re-render of the layout when settings change
+  const [layoutKey, setLayoutKey] = React.useState(Date.now());
+
+  const handleSettingsChange = (open: boolean) => {
+    if (!open) {
+      // When the modal closes, update the key to trigger re-renders in children
+      setLayoutKey(Date.now());
+    }
+    setIsSettingsOpen(open);
+  }
 
   return (
     <SidebarProvider>
@@ -83,7 +94,7 @@ export default function MainLayout({
           </SidebarMenu>
         </SidebarContent>
       </Sidebar>
-      <SidebarInset>
+      <SidebarInset key={layoutKey}>
         <header className="flex h-14 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
           <SidebarTrigger className="md:hidden" />
           <div className="flex-1" />
@@ -118,7 +129,9 @@ export default function MainLayout({
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </SidebarInset>
-      <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      <SettingsModal open={isSettingsOpen} onOpenChange={handleSettingsChange} />
     </SidebarProvider>
   );
 }
+
+    

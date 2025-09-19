@@ -7,6 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import {
@@ -19,6 +21,9 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
 
 type SettingsModalProps = {
   open: boolean;
@@ -28,61 +33,78 @@ type SettingsModalProps = {
 type Theme = 'light' | 'dark';
 type SnippetLanguage = 'JavaScript' | 'TypeScript' | 'Node.js' | 'Python' | 'Go' | 'Java' | 'C#' | 'Ruby';
 
+const DEFAULTS = {
+  theme: 'dark' as Theme,
+  snippetLanguage: 'JavaScript' as SnippetLanguage,
+  bearerToken: '',
+  aiCreativity: 0.5,
+  requestTimeout: 30000,
+  sslVerification: true,
+};
+
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
-  const [theme, setTheme] = useState<Theme>('dark');
-  const [snippetLanguage, setSnippetLanguage] = useState<SnippetLanguage>('JavaScript');
-  const [bearerToken, setBearerToken] = useState('');
-  const [creativity, setCreativity] = useState([0.5]);
+  const { toast } = useToast();
+
+  // Local state for the form
+  const [theme, setTheme] = useState<Theme>(DEFAULTS.theme);
+  const [snippetLanguage, setSnippetLanguage] = useState<SnippetLanguage>(DEFAULTS.snippetLanguage);
+  const [bearerToken, setBearerToken] = useState(DEFAULTS.bearerToken);
+  const [creativity, setCreativity] = useState([DEFAULTS.aiCreativity]);
+  const [requestTimeout, setRequestTimeout] = useState(DEFAULTS.requestTimeout);
+  const [sslVerification, setSslVerification] = useState(DEFAULTS.sslVerification);
+
   const [isMounted, setIsMounted] = useState(false);
 
+  // Load settings from localStorage on mount
   useEffect(() => {
     setIsMounted(true);
-    const storedTheme = localStorage.getItem('theme') as Theme | null;
-    if (storedTheme) {
-      setTheme(storedTheme);
-    } else {
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setTheme(prefersDark ? 'dark' : 'light');
-    }
-
-    const storedSnippetLang = localStorage.getItem('snippetLanguage') as SnippetLanguage | null;
-    if (storedSnippetLang) setSnippetLanguage(storedSnippetLang);
-    
-    const storedBearerToken = localStorage.getItem('bearerToken');
-    if (storedBearerToken) setBearerToken(storedBearerToken);
-    
-    const storedCreativity = localStorage.getItem('aiCreativity');
-    if (storedCreativity) setCreativity([parseFloat(storedCreativity)]);
-
+    setTheme((localStorage.getItem('theme') as Theme) || DEFAULTS.theme);
+    setSnippetLanguage((localStorage.getItem('snippetLanguage') as SnippetLanguage) || DEFAULTS.snippetLanguage);
+    setBearerToken(localStorage.getItem('bearerToken') || DEFAULTS.bearerToken);
+    setCreativity([parseFloat(localStorage.getItem('aiCreativity') || DEFAULTS.aiCreativity.toString())]);
+    setRequestTimeout(parseInt(localStorage.getItem('requestTimeout') || DEFAULTS.requestTimeout.toString(), 10));
+    setSslVerification(localStorage.getItem('sslVerification') !== 'false');
   }, []);
 
-  useEffect(() => {
-    if (isMounted) {
+  const handleSave = () => {
+    try {
+      // Apply theme immediately
       document.documentElement.classList.remove('light', 'dark');
       document.documentElement.classList.add(theme);
       document.documentElement.style.colorScheme = theme;
+
+      // Save all settings to localStorage
       localStorage.setItem('theme', theme);
-    }
-  }, [theme, isMounted]);
-
-  useEffect(() => {
-    if (isMounted) {
       localStorage.setItem('snippetLanguage', snippetLanguage);
-    }
-  }, [snippetLanguage, isMounted]);
-  
-  useEffect(() => {
-    if (isMounted) {
       localStorage.setItem('bearerToken', bearerToken);
-    }
-  }, [bearerToken, isMounted]);
-
-  useEffect(() => {
-    if (isMounted) {
       localStorage.setItem('aiCreativity', creativity[0].toString());
+      localStorage.setItem('requestTimeout', requestTimeout.toString());
+      localStorage.setItem('sslVerification', sslVerification.toString());
+      
+      toast({ title: 'Success', description: 'Settings saved successfully.' });
+      onOpenChange(false);
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save settings.' });
     }
-  }, [creativity, isMounted]);
+  };
 
+  const handleReset = () => {
+    setTheme(DEFAULTS.theme);
+    setSnippetLanguage(DEFAULTS.snippetLanguage);
+    setBearerToken(DEFAULTS.bearerToken);
+    setCreativity([DEFAULTS.aiCreativity]);
+    setRequestTimeout(DEFAULTS.requestTimeout);
+    setSslVerification(DEFAULTS.sslVerification);
+    
+    toast({ title: 'Settings Reset', description: 'Settings have been reset to default. Click Save to apply.' });
+  };
+  
+  const handleClearHistory = () => {
+    localStorage.removeItem('requestHistory');
+    toast({ title: 'History Cleared', description: 'Your API request history has been cleared.' });
+    // This requires a page reload for the component to pick up the change
+    window.location.reload();
+  };
 
   if (!isMounted) {
     return null; // Don't render on the server
@@ -129,6 +151,31 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           <div>
             <h3 className="text-lg font-semibold mb-4">API & Network</h3>
             <div className="space-y-6">
+               <div className="flex items-center justify-between">
+                <Label htmlFor="timeout-input" className="flex flex-col space-y-1">
+                  <span>Request Timeout (ms)</span>
+                  <span className="text-xs font-normal text-muted-foreground">Max time to wait for a response.</span>
+                </Label>
+                <Input
+                  id="timeout-input"
+                  type="number"
+                  value={requestTimeout}
+                  onChange={(e) => setRequestTimeout(parseInt(e.target.value, 10))}
+                  placeholder="e.g., 30000"
+                  className="w-[180px]"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="ssl-switch" className="flex flex-col space-y-1">
+                  <span>SSL Certificate Verification</span>
+                  <span className="text-xs font-normal text-muted-foreground">Verify SSL certificates for requests.</span>
+                </Label>
+                <Switch
+                  id="ssl-switch"
+                  checked={sslVerification}
+                  onCheckedChange={setSslVerification}
+                />
+              </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="auth-vault-bearer" className="flex flex-col space-y-1">
                   <span>Authentication Vault</span>
@@ -188,8 +235,30 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </div>
             </div>
           </div>
+          
+          <Separator />
+          
+          {/* Data Management */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Data Management</h3>
+            <div className="space-y-6">
+               <div className="flex items-center justify-between">
+                <Label className="flex flex-col space-y-1">
+                  <span>Clear Request History</span>
+                   <span className="text-xs font-normal text-muted-foreground">Permanently delete all saved requests.</span>
+                </Label>
+                <Button variant="destructive" size="sm" onClick={handleClearHistory}>Clear History</Button>
+              </div>
+            </div>
+          </div>
         </div>
+        <DialogFooter className="pt-4">
+            <Button variant="ghost" onClick={handleReset}>Reset to Default</Button>
+            <Button onClick={handleSave}>Save Changes</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+    

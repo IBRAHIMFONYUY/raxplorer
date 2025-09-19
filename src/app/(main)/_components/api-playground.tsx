@@ -126,11 +126,17 @@ export function ApiPlayground() {
   const [aiState, aiFormAction, isAiPending] = useActionState(generateRequestAction, { data: null });
   const previousAiData = useRef<GenerateRequestOutput | null>(null);
 
-  useEffect(() => {
+   useEffect(() => {
+    // Load history from localStorage
+    const storedHistory = localStorage.getItem('requestHistory');
+    if (storedHistory) {
+      setHistory(JSON.parse(storedHistory));
+    }
+
     const storedBearerToken = localStorage.getItem('bearerToken');
     if (storedBearerToken) {
       setBearerToken(storedBearerToken);
-      setAuthMethod('bearer'); // Automatically select bearer if token exists
+      if (storedBearerToken) setAuthMethod('bearer');
     }
   }, []);
 
@@ -147,6 +153,10 @@ export function ApiPlayground() {
   ) => {
     setIsLoading(true);
     setResponse(null);
+
+    const abortController = new AbortController();
+    const timeout = parseInt(localStorage.getItem('requestTimeout') || '30000', 10);
+    const timeoutId = setTimeout(() => abortController.abort(), timeout);
 
     const { method, url, queryParams, headers, body, authMethod, bearerToken } = requestData;
 
@@ -190,18 +200,29 @@ export function ApiPlayground() {
         requestUrl += `?${params.toString()}`;
       }
       
-      timing.dnsLookup = Date.now();
-      const res = await fetch(requestUrl, {
+      const fetchOptions: RequestInit = {
         method,
         headers: requestHeaders,
         body: !['GET', 'HEAD'].includes(method) ? body : undefined,
-      });
+        signal: abortController.signal,
+      };
+
+      const sslVerification = localStorage.getItem('sslVerification') !== 'false';
+      if (process.env.NODE_ENV === 'development' && !sslVerification) {
+        // In a real scenario, you'd use a custom agent. This is a placeholder for the concept.
+        // For browsers, this is controlled by security settings and cannot be disabled programmatically like in Node.js.
+        console.warn('SSL verification cannot be disabled in the browser.');
+      }
+      
+      timing.dnsLookup = Date.now();
+      const res = await fetch(requestUrl, fetchOptions);
       timing.tcpConnection = Date.now();
       timing.tlsHandshake = Date.now();
       timing.firstByte = Date.now();
 
       const responseText = await res.text();
       timing.contentTransfer = Date.now();
+      clearTimeout(timeoutId);
 
       let responseBody;
       try {
@@ -235,24 +256,22 @@ export function ApiPlayground() {
         },
       };
       setResponse(fullResponse);
-    } catch (error) {
+    } catch (error: any) {
+      clearTimeout(timeoutId);
       timing.total = Date.now();
+      
+      let errorMessage = 'An unknown error occurred';
+      if (error instanceof Error) {
+          errorMessage = error.name === 'AbortError' ? 'Request timed out' : error.message;
+      }
+
       fullResponse = {
         status: 500,
         statusText: 'Client Error',
         time: `${timing.total - timing.start}ms`,
         size: '0 KB',
         headers: {},
-        body: JSON.stringify(
-          {
-            error:
-              error instanceof Error
-                ? error.message
-                : 'An unknown error occurred',
-          },
-          null,
-          2
-        ),
+        body: JSON.stringify({ error: errorMessage }, null, 2),
         timing: { Total: timing.total - timing.start },
       };
       setResponse(fullResponse);
@@ -344,7 +363,11 @@ export function ApiPlayground() {
       body,
       response: response || undefined,
     };
-    setHistory(prev => [newHistoryItem, ...prev].slice(0, 20)); // Keep last 20 requests
+    setHistory(prev => {
+        const updatedHistory = [newHistoryItem, ...prev].slice(0, 20);
+        localStorage.setItem('requestHistory', JSON.stringify(updatedHistory));
+        return updatedHistory;
+    });
   };
 
   const loadFromHistory = (item: HistoryItem) => {
@@ -362,6 +385,11 @@ export function ApiPlayground() {
     setChallengeDescription(null);
     router.replace('/', undefined);
   };
+  
+  const clearHistory = () => {
+      setHistory([]);
+      localStorage.removeItem('requestHistory');
+  }
 
   const addRow = (setter: React.Dispatch<React.SetStateAction<KeyValue[]>>) => {
     setter(prev => [...prev, { key: '', value: '' }]);
@@ -878,7 +906,7 @@ export function ApiPlayground() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardDescription>A list of your 20 most recent API requests.</CardDescription>
-                <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
+                <Button variant="ghost" size="sm" onClick={clearHistory} disabled={history.length === 0}>Clear</Button>
               </CardHeader>
               <CardContent>
                 {history.length > 0 ? (
@@ -929,3 +957,5 @@ export function ApiPlayground() {
     </div>
   );
 }
+
+    
