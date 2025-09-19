@@ -5,6 +5,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,10 +26,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Key, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Clock, History, Loader2, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 type KeyValue = {
   key: string;
@@ -51,6 +60,10 @@ type HistoryItem = {
   url: string;
   status: number;
   time: string;
+  queryParams: KeyValue[];
+  headers: KeyValue[];
+  body: string;
+  response?: ResponseData;
 };
 
 const COMMON_HEADERS = [
@@ -128,6 +141,7 @@ export default function ApiPlaygroundPage() {
     let res;
     let finalStatus = 500;
     let finalStatusText = 'Client Error';
+    let fullResponse: ResponseData | null = null;
     try {
       const requestHeaders = new Headers();
       headers.forEach(header => {
@@ -141,7 +155,9 @@ export default function ApiPlaygroundPage() {
       }
 
       if (!['GET', 'HEAD'].includes(method) && body) {
-        requestHeaders.append('Content-Type', 'application/json');
+        if (!requestHeaders.has('Content-Type')) {
+          requestHeaders.append('Content-Type', 'application/json');
+        }
       }
 
       let requestUrl = url;
@@ -167,10 +183,17 @@ export default function ApiPlaygroundPage() {
       finalStatus = res.status;
       finalStatusText = res.statusText;
 
-      const responseBody = await res.json();
+      const responseText = await res.text();
       timing.contentTransfer = Date.now();
 
-      const responseSize = JSON.stringify(responseBody).length;
+      let responseBody;
+      try {
+        responseBody = JSON.parse(responseText);
+      } catch {
+        responseBody = responseText;
+      }
+      
+      const responseSize = responseText.length;
       timing.total = Date.now();
 
       const responseHeaders: Record<string, string> = {};
@@ -178,7 +201,7 @@ export default function ApiPlaygroundPage() {
         responseHeaders[key] = value;
       });
 
-      const newResponse: ResponseData = {
+      fullResponse = {
         status: res.status,
         statusText: res.statusText,
         time: `${timing.total - timing.start}ms`,
@@ -194,11 +217,10 @@ export default function ApiPlaygroundPage() {
           'Total': timing.total - timing.start,
         },
       };
-      setResponse(newResponse);
-      addToHistory(method, url, newResponse.status, newResponse.time);
+      setResponse(fullResponse);
     } catch (error) {
       timing.total = Date.now();
-       const errorResponse = {
+       fullResponse = {
         status: 500,
         statusText: 'Client Error',
         time: `${timing.total - timing.start}ms`,
@@ -214,25 +236,35 @@ export default function ApiPlaygroundPage() {
         ),
         timing: { 'Total': timing.total - timing.start },
       };
-      setResponse(errorResponse);
-      addToHistory(method, url, errorResponse.status, errorResponse.time);
+      setResponse(fullResponse);
     } finally {
+      addToHistory(method, url, queryParams, headers, body, fullResponse);
       setIsLoading(false);
     }
   };
   
-  const addToHistory = (method: string, url: string, status: number, time: string) => {
-    const newHistoryItem: HistoryItem = { id: Date.now().toString(), method, url, status, time };
+  const addToHistory = (method: string, url: string, queryParams: KeyValue[], headers: KeyValue[], body: string, response: ResponseData | null) => {
+    const newHistoryItem: HistoryItem = { 
+      id: Date.now().toString(), 
+      method, 
+      url, 
+      status: response?.status || 500,
+      time: response?.time || '0ms',
+      queryParams,
+      headers,
+      body,
+      response: response || undefined,
+    };
     setHistory(prev => [newHistoryItem, ...prev].slice(0, 20)); // Keep last 20 requests
   };
 
   const loadFromHistory = (item: HistoryItem) => {
     setMethod(item.method);
     setUrl(item.url);
-    // You might want to store/retrieve more details in history object
-    setQueryParams([]);
-    setHeaders([]);
-    setBody('');
+    setQueryParams(item.queryParams);
+    setHeaders(item.headers);
+    setBody(item.body);
+    setResponse(item.response || null);
   };
 
   const addRow = (
@@ -374,10 +406,72 @@ export default function ApiPlaygroundPage() {
       </Button>
     </>
   );
+  
+  const HistoryItemDetails = ({ item }: { item: HistoryItem }) => (
+    <div className="space-y-6 text-sm">
+      <div>
+        <h3 className="font-semibold text-base mb-2">Request</h3>
+        <div className="space-y-1">
+          <p><span className="font-medium">Method:</span> <Badge variant="outline">{item.method}</Badge></p>
+          <p className="font-medium">URL:</p>
+          <p className="font-code bg-secondary p-2 rounded-md break-all">{item.url}</p>
+        </div>
+      </div>
+      
+      {item.queryParams.length > 0 && (
+        <div>
+          <h4 className="font-semibold mb-2">Query Params</h4>
+          <Table>
+            <TableHeader><TableRow><TableHead>Key</TableHead><TableHead>Value</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {item.queryParams.map(p => <TableRow key={p.key}><TableCell>{p.key}</TableCell><TableCell>{p.value}</TableCell></TableRow>)}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+      
+      {item.headers.length > 0 && (
+        <div>
+          <h4 className="font-semibold mb-2">Headers</h4>
+           <Table>
+            <TableHeader><TableRow><TableHead>Key</TableHead><TableHead>Value</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {item.headers.map(h => <TableRow key={h.key}><TableCell>{h.key}</TableCell><TableCell>{h.value}</TableCell></TableRow>)}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {item.body && (
+        <div>
+          <h4 className="font-semibold mb-2">Body</h4>
+          <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm"><code className="font-code text-secondary-foreground">{item.body}</code></pre>
+        </div>
+      )}
+
+      {item.response && (
+        <div>
+           <h3 className="font-semibold text-base mb-2">Response</h3>
+           <div className="flex items-center gap-4 text-sm mb-2">
+              <div className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${item.response.status >= 200 && item.response.status < 300 ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                <span>Status: {item.response.status} {item.response.statusText}</span>
+              </div>
+              <span>Time: {item.response.time}</span>
+              <span>Size: {item.response.size}</span>
+            </div>
+           <div>
+            <h4 className="font-semibold mb-2">Body</h4>
+            <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm"><code className="font-code text-secondary-foreground">{item.response.body}</code></pre>
+           </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] gap-4">
-      <Card className="w-1/4 flex flex-col">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-5rem)] gap-4">
+      <Card className="w-full md:w-1/3 lg:w-1/4 flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5"/> History</CardTitle>
            <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
@@ -387,14 +481,30 @@ export default function ApiPlaygroundPage() {
             {history.length > 0 ? (
               <div className="space-y-1 p-2">
               {history.map(item => (
-                <button key={item.id} onClick={() => loadFromHistory(item)} className="w-full text-left p-2 rounded-md hover:bg-secondary">
-                  <div className="flex justify-between items-center">
-                    <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground truncate">{item.url}</p>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
-                </button>
+                <Dialog key={item.id}>
+                  <DialogTrigger asChild>
+                    <button className="w-full text-left p-2 rounded-md hover:bg-secondary">
+                      <div className="flex justify-between items-center">
+                        <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">{item.url}</p>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
+                    </button>
+                  </DialogTrigger>
+                   <DialogContent className="max-w-4xl max-h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle>History Details</DialogTitle>
+                       <CardDescription>
+                         A detailed view of the request and response from {new Date(parseInt(item.id)).toLocaleString()}.
+                         <Button size="sm" variant="outline" className="ml-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
+                       </CardDescription>
+                    </DialogHeader>
+                    <div className="overflow-y-auto">
+                      <HistoryItemDetails item={item} />
+                    </div>
+                  </DialogContent>
+                </Dialog>
               ))}
               </div>
             ) : (
@@ -405,12 +515,12 @@ export default function ApiPlaygroundPage() {
            </ScrollArea>
         </CardContent>
       </Card>
-      <div className="w-3/4 flex flex-col gap-4">
+      <div className="w-full md:w-2/3 lg:w-3/4 flex flex-col gap-4 overflow-hidden">
         <Card className="flex-shrink-0">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-center gap-2">
               <Select value={method} onValueChange={setMethod}>
-                <SelectTrigger className="w-[120px] font-bold">
+                <SelectTrigger className="w-full sm:w-[120px] font-bold">
                   <SelectValue placeholder="Method" />
                 </SelectTrigger>
                 <SelectContent>
@@ -425,15 +535,15 @@ export default function ApiPlaygroundPage() {
                 value={url}
                 onChange={e => setUrl(e.target.value)}
                 placeholder="https://api.example.com/v1/users"
-                className="text-base"
+                className="text-base flex-1"
               />
-              <Button onClick={handleSend} disabled={isLoading} size="lg">
+              <Button onClick={handleSend} disabled={isLoading} size="lg" className="w-full sm:w-auto">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isLoading ? 'Sending...' : 'Send'}
               </Button>
             </div>
              <Tabs defaultValue="params" className="mt-4">
-              <TabsList>
+              <TabsList className="w-full sm:w-auto overflow-x-auto">
                 <TabsTrigger value="params">Params</TabsTrigger>
                 <TabsTrigger value="auth">Authorization</TabsTrigger>
                 <TabsTrigger value="headers">Headers</TabsTrigger>
@@ -448,7 +558,7 @@ export default function ApiPlaygroundPage() {
                 />
               </TabsContent>
               <TabsContent value="auth" className="mt-4">
-                <div className="w-1/2 space-y-4">
+                <div className="w-full md:w-1/2 space-y-4">
                    <Select value={authMethod} onValueChange={setAuthMethod}>
                       <SelectTrigger>
                         <SelectValue placeholder="Auth Method" />
@@ -508,7 +618,7 @@ export default function ApiPlaygroundPage() {
             <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle>Response</CardTitle>
-                <div className="flex items-center gap-4 text-sm">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <span
                       className={`h-2 w-2 rounded-full ${
@@ -591,3 +701,5 @@ export default function ApiPlaygroundPage() {
     </div>
   );
 }
+
+    
