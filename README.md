@@ -1,1 +1,1 @@
-interactive pi playground with ai features
+interactive api playground with ai features
