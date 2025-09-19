@@ -118,6 +118,13 @@ export function ApiPlayground() {
   const [aiState, aiFormAction, isAiPending] = useActionState(generateRequestAction, { data: null });
   const previousAiData = useRef<GenerateRequestOutput | null>(null);
 
+  useEffect(() => {
+    const storedBearerToken = localStorage.getItem('bearerToken');
+    if (storedBearerToken) {
+      setBearerToken(storedBearerToken);
+      setAuthMethod('bearer'); // Automatically select bearer if token exists
+    }
+  }, []);
 
   const handleSend = async (
     requestData: {
@@ -267,13 +274,13 @@ export function ApiPlayground() {
         queryParams: queryParams || [],
         headers: headers || [],
         body: body || '',
-        authMethod: 'none', // Assuming AI gen doesn't set auth yet
-        bearerToken: ''
+        authMethod: authMethod,
+        bearerToken: bearerToken
       });
 
       previousAiData.current = aiState.data;
     }
-  }, [aiState]);
+  }, [aiState, authMethod, bearerToken]);
 
 
   useEffect(() => {
