@@ -548,9 +548,9 @@ export default function ApiPlaygroundPage() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-5rem)]">
-      <div className="flex flex-col w-full md:w-2/3 space-y-4">
-        <Card className="flex-1">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col w-full space-y-4">
+        <Card>
           <CardHeader>
             <CardTitle>Request</CardTitle>
           </CardHeader>
@@ -639,11 +639,11 @@ export default function ApiPlaygroundPage() {
           </CardContent>
         </Card>
 
-        <Card className="flex-1">
+        <Card>
           <CardHeader>
             <CardTitle>Response</CardTitle>
             {response && (
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <span
                     className={`h-2 w-2 rounded-full ${
@@ -663,13 +663,13 @@ export default function ApiPlaygroundPage() {
           </CardHeader>
           <CardContent>
             {isLoading && (
-              <div className="flex items-center justify-center h-48">
+              <div className="flex items-center justify-center min-h-[200px]">
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 <p>Loading response...</p>
               </div>
             )}
             {!isLoading && !response && (
-              <div className="h-48 flex items-center justify-center text-muted-foreground">
+              <div className="min-h-[200px] flex items-center justify-center text-muted-foreground">
                 <p>Click "Send" to get a response</p>
               </div>
             )}
@@ -690,111 +690,115 @@ export default function ApiPlaygroundPage() {
                   </ScrollArea>
                 </TabsContent>
                 <TabsContent value="headers" className="mt-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Key</TableHead>
-                        <TableHead>Value</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(response.headers).map(
-                        ([key, value]: [string, string]) => (
-                          <TableRow key={key}>
-                            <TableCell className="font-medium">{key}</TableCell>
-                            <TableCell>{value}</TableCell>
-                          </TableRow>
-                        )
-                      )}
-                    </TableBody>
-                  </Table>
+                  <ScrollArea className="h-48">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Key</TableHead>
+                          <TableHead>Value</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(response.headers).map(
+                          ([key, value]: [string, string]) => (
+                            <TableRow key={key}>
+                              <TableCell className="font-medium">{key}</TableCell>
+                              <TableCell>{value}</TableCell>
+                            </TableRow>
+                          )
+                        )}
+                      </TableBody>
+                    </Table>
+                   </ScrollArea>
                 </TabsContent>
                 <TabsContent value="timing" className="mt-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Phase</TableHead>
-                        <TableHead>Duration (ms)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(response.timing).map(
-                        ([phase, duration]) => (
-                          <TableRow key={phase}>
-                            <TableCell className="font-medium">
-                              {phase}
-                            </TableCell>
-                            <TableCell>{duration.toFixed(2)}</TableCell>
-                          </TableRow>
-                        )
-                      )}
-                    </TableBody>
-                  </Table>
+                  <ScrollArea className="h-48">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Phase</TableHead>
+                          <TableHead>Duration (ms)</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(response.timing).map(
+                          ([phase, duration]) => (
+                            <TableRow key={phase}>
+                              <TableCell className="font-medium">
+                                {phase}
+                              </TableCell>
+                              <TableCell>{duration.toFixed(2)}</TableCell>
+                            </TableRow>
+                          )
+                        )}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
                 </TabsContent>
               </Tabs>
             )}
           </CardContent>
         </Card>
-        
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="history">
-            <AccordionTrigger>
-              <div className="flex items-center gap-2 text-lg font-semibold">
-                <History className="h-5 w-5" />
-                Request History
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardDescription>A list of your 20 most recent API requests.</CardDescription>
-                  <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
-                </CardHeader>
-                <CardContent>
-                  {history.length > 0 ? (
-                    <ScrollArea className="h-48">
-                      <div className="space-y-1">
-                        {history.map(item => (
-                          <Dialog key={item.id}>
-                            <DialogTrigger asChild>
-                              <button className="w-full text-left p-2 rounded-md hover:bg-secondary">
-                                <div className="flex justify-between items-center">
-                                  <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
-                                  <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
-                                </div>
-                                <p className="text-sm text-muted-foreground truncate">{item.url}</p>
-                                <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
-                              </button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-3xl">
-                              <DialogHeader>
-                                <DialogTitle>History Details</DialogTitle>
-                                <CardDescription>
-                                  A detailed view of a request from {new Date(parseInt(item.id)).toLocaleString()}.
-                                  <Button size="sm" variant="outline" className="ml-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
-                                </CardDescription>
-                              </DialogHeader>
-                              <ScrollArea className="max-h-[60vh]">
-                                <div className="p-1">
-                                  <HistoryItemDetails item={item} />
-                                </div>
-                              </ScrollArea>
-                            </DialogContent>
-                          </Dialog>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  ) : (
-                    <div className="h-full flex items-center justify-center p-8">
-                      <p className="text-muted-foreground text-sm">No history yet. Your requests will appear here.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
       </div>
+        
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="history">
+          <AccordionTrigger>
+            <div className="flex items-center gap-2 text-lg font-semibold">
+              <History className="h-5 w-5" />
+              Request History
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardDescription>A list of your 20 most recent API requests.</CardDescription>
+                <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
+              </CardHeader>
+              <CardContent>
+                {history.length > 0 ? (
+                  <ScrollArea className="h-48">
+                    <div className="space-y-1">
+                      {history.map(item => (
+                        <Dialog key={item.id}>
+                          <DialogTrigger asChild>
+                            <button className="w-full text-left p-2 rounded-md hover:bg-secondary">
+                              <div className="flex justify-between items-center">
+                                <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">{item.url}</p>
+                              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-3xl">
+                            <DialogHeader>
+                              <DialogTitle>History Details</DialogTitle>
+                              <CardDescription>
+                                A detailed view of a request from {new Date(parseInt(item.id)).toLocaleString()}.
+                                <Button size="sm" variant="outline" className="ml-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
+                              </CardDescription>
+                            </DialogHeader>
+                            <ScrollArea className="max-h-[60vh]">
+                              <div className="p-1">
+                                <HistoryItemDetails item={item} />
+                              </div>
+                            </ScrollArea>
+                          </DialogContent>
+                        </Dialog>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="h-full flex items-center justify-center p-8">
+                    <p className="text-muted-foreground text-sm">No history yet. Your requests will appear here.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }
