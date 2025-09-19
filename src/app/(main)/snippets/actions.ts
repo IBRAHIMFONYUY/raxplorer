@@ -7,7 +7,7 @@ const formSchema = z.object({
   prompt: z
     .string()
     .min(10, 'Endpoint definition must be at least 10 characters long.'),
-  language: z.enum(['Node.js', 'Python', 'Go']),
+  language: z.enum(['JavaScript', 'TypeScript', 'Node.js', 'Python', 'Go', 'Java', 'C#', 'Ruby']),
 });
 
 export async function generateSnippetAction(

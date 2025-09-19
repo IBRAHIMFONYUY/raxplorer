@@ -16,7 +16,7 @@ const CodeSnippetInputSchema = z.object({
     .string()
     .describe('The OpenAPI definition or a natural language description of the API endpoint.'),
   language: z
-    .enum(['Node.js', 'Python', 'Go'])
+    .enum(['JavaScript', 'TypeScript', 'Node.js', 'Python', 'Go', 'Java', 'C#', 'Ruby'])
     .describe('The programming language for which to generate the code snippet.'),
 });
 export type CodeSnippetInput = z.infer<typeof CodeSnippetInputSchema>;

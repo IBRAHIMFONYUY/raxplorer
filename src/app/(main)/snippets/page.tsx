@@ -38,7 +38,7 @@ const formSchema = z.object({
     .string()
     .min(10, 'Please provide a more detailed description (min 10 characters).')
     .max(2000, 'Description is too long (max 2000 characters).'),
-  language: z.enum(['Node.js', 'Python', 'Go']),
+  language: z.enum(['JavaScript', 'TypeScript', 'Node.js', 'Python', 'Go', 'Java', 'C#', 'Ruby']),
 });
 
 const initialState = {
@@ -71,7 +71,7 @@ export default function CodeSnippetsPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       prompt: 'GET request to /api/v1/users to fetch a list of all users.',
-      language: 'Node.js',
+      language: 'JavaScript',
     },
   });
 
@@ -134,9 +134,14 @@ export default function CodeSnippetsPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="JavaScript">JavaScript</SelectItem>
+                        <SelectItem value="TypeScript">TypeScript</SelectItem>
                         <SelectItem value="Node.js">Node.js</SelectItem>
                         <SelectItem value="Python">Python</SelectItem>
                         <SelectItem value="Go">Go</SelectItem>
+                        <SelectItem value="Java">Java</SelectItem>
+                        <SelectItem value="C#">C#</SelectItem>
+                        <SelectItem value="Ruby">Ruby</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
