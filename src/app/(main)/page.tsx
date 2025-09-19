@@ -412,7 +412,7 @@ export default function ApiPlaygroundPage() {
       <div>
         <h3 className="font-semibold text-base mb-2">Request</h3>
         <div className="space-y-1">
-          <p><span className="font-medium">Method:</span> <Badge variant="outline">{item.method}</Badge></p>
+          <div><span className="font-medium">Method:</span> <Badge variant="outline">{item.method}</Badge></div>
           <p className="font-medium">URL:</p>
           <p className="font-code bg-secondary p-2 rounded-md break-all">{item.url}</p>
         </div>
