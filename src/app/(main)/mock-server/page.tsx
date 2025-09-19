@@ -1,9 +1,6 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { useForm, FormProvider, useFormContext } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Card,
   CardContent,
@@ -16,7 +13,6 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -24,6 +20,10 @@ import {
 import { generateMockServerAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
 
 const formSchema = z.object({
   prompt: z
@@ -38,26 +38,8 @@ const initialState = {
   data: null,
 };
 
-function SubmitButton() {
-  const { formState } = useFormContext();
-  const isSubmitting = formState.isSubmitting;
-
-  return (
-    <Button type="submit" disabled={isSubmitting}>
-      {isSubmitting ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Generating...
-        </>
-      ) : (
-        'Generate Mock Server'
-      )}
-    </Button>
-  );
-}
-
 export default function MockServerPage() {
-  const [state, formAction] = useActionState(
+  const [state, formAction, isPending] = useActionState(
     generateMockServerAction,
     initialState
   );
@@ -103,14 +85,7 @@ components:
     },
   });
 
-  const { handleSubmit, formState } = form;
-
-  const handleFormAction = (data: z.infer<typeof formSchema>) => {
-    const formData = new FormData();
-    formData.append('prompt', data.prompt);
-    formData.append('creativity', creativity.toString());
-    formAction(formData);
-  };
+  const { formState: { errors } } = form;
 
   useEffect(() => {
     if (state.message && state.message !== 'Success') {
@@ -133,28 +108,31 @@ components:
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <FormProvider {...form}>
-            <form onSubmit={handleSubmit(handleFormAction)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="prompt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>API Specification or Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        className="min-h-[300px] font-code text-sm"
-                        placeholder="e.g., An API for managing a list of tasks with GET, POST, and DELETE endpoints."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+            <form action={formAction} className="space-y-6">
+              <FormItem>
+                <FormLabel>API Specification or Description</FormLabel>
+                <FormControl>
+                  <Textarea
+                    name="prompt"
+                    className="min-h-[300px] font-code text-sm"
+                    placeholder="e.g., An API for managing a list of tasks with GET, POST, and DELETE endpoints."
+                    defaultValue={form.getValues('prompt')}
+                  />
+                </FormControl>
+                {errors.prompt && <FormMessage>{errors.prompt.message}</FormMessage>}
+              </FormItem>
+               <input type="hidden" name="creativity" value={creativity} />
+              <Button type="submit" disabled={isPending}>
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Mock Server'
                 )}
-              />
-              <SubmitButton />
+              </Button>
             </form>
-          </FormProvider>
         </CardContent>
       </Card>
       <Card>
@@ -167,7 +145,7 @@ components:
         <CardContent>
           <pre className="h-full min-h-[400px] w-full overflow-auto rounded-lg bg-secondary p-4 whitespace-pre-wrap">
             <code className="font-code text-sm text-secondary-foreground">
-              {formState.isSubmitting && !state.data ? (
+              {isPending && !state.data ? (
                 <div className="flex items-center justify-center h-full">
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     <p>Generating mock server...</p>

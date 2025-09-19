@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { useForm, FormProvider, useFormContext } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -14,9 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -47,39 +45,22 @@ const initialState = {
   data: null,
 };
 
-function SubmitButton() {
-  const { formState } = useFormContext();
-  const isSubmitting = formState.isSubmitting;
-
-  return (
-    <Button type="submit" disabled={isSubmitting}>
-      {isSubmitting ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Generating...
-        </>
-      ) : (
-        'Generate Snippet'
-      )}
-    </Button>
-  );
-}
 
 export default function CodeSnippetsPage() {
-  const [state, formAction] = useActionState(generateSnippetAction, initialState);
+  const [state, formAction, isPending] = useActionState(generateSnippetAction, initialState);
   const { toast } = useToast();
   const [creativity, setCreativity] = useState(0.5);
-  const [snippetLanguage, setSnippetLanguage] = useState<z.infer<typeof formSchema>['language']>('JavaScript');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       prompt: 'GET request to /api/v1/users to fetch a list of all users.',
-      language: snippetLanguage,
+      language: 'JavaScript',
     },
   });
   
-  const { handleSubmit, formState } = form;
+  const { formState: {errors}, getValues, setValue, watch } = form;
+  const watchedLanguage = watch('language');
 
   useEffect(() => {
     const storedCreativity = localStorage.getItem('aiCreativity');
@@ -88,23 +69,10 @@ export default function CodeSnippetsPage() {
     }
     const storedSnippetLang = localStorage.getItem('snippetLanguage') as z.infer<typeof formSchema>['language'] | null;
     if (storedSnippetLang) {
-      setSnippetLanguage(storedSnippetLang);
-      form.setValue('language', storedSnippetLang);
+      setValue('language', storedSnippetLang);
     }
-  }, []);
+  }, [setValue]);
 
-
-  useEffect(() => {
-    form.setValue('language', snippetLanguage);
-  }, [snippetLanguage, form]);
-
-  const handleFormAction = (data: z.infer<typeof formSchema>) => {
-    const formData = new FormData();
-    formData.append('prompt', data.prompt);
-    formData.append('language', data.language);
-    formData.append('creativity', creativity.toString());
-    formAction(formData);
-  };
 
   useEffect(() => {
     if (state.message && state.message !== 'Success') {
@@ -126,63 +94,62 @@ export default function CodeSnippetsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <FormProvider {...form}>
             <form
-              onSubmit={handleSubmit(handleFormAction)}
+              action={formAction}
               className="space-y-6"
             >
-              <FormField
-                control={form.control}
-                name="prompt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Endpoint Definition</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        className="min-h-[200px] font-code text-sm"
-                        placeholder="e.g., A POST request to /login with email and password in the body."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="language"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Language</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      name={field.name}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a language" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="JavaScript">JavaScript</SelectItem>
-                        <SelectItem value="TypeScript">TypeScript</SelectItem>
-                        <SelectItem value="Node.js">Node.js</SelectItem>
-                        <SelectItem value="Python">Python</SelectItem>
-                        <SelectItem value="Go">Go</SelectItem>
-                        <SelectItem value="Java">Java</SelectItem>
-                        <SelectItem value="C#">C#</SelectItem>
-                        <SelectItem value="Ruby">Ruby</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Endpoint Definition</FormLabel>
+                <FormControl>
+                  <Textarea
+                    name="prompt"
+                    className="min-h-[200px] font-code text-sm"
+                    placeholder="e.g., A POST request to /login with email and password in the body."
+                    defaultValue={getValues('prompt')}
+                  />
+                </FormControl>
+                {errors.prompt && <FormMessage>{errors.prompt.message}</FormMessage>}
+              </FormItem>
+              
+              <FormItem>
+                <FormLabel>Language</FormLabel>
+                <Select
+                  name="language"
+                  defaultValue={getValues('language')}
+                  onValueChange={(value: z.infer<typeof formSchema>['language']) => setValue('language', value)}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a language" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="JavaScript">JavaScript</SelectItem>
+                    <SelectItem value="TypeScript">TypeScript</SelectItem>
+                    <SelectItem value="Node.js">Node.js</SelectItem>
+                    <SelectItem value="Python">Python</SelectItem>
+                    <SelectItem value="Go">Go</SelectItem>
+                    <SelectItem value="Java">Java</SelectItem>
+                    <SelectItem value="C#">C#</SelectItem>
+                    <SelectItem value="Ruby">Ruby</SelectItem>
+                  </SelectContent>
+                </Select>
+                 {errors.language && <FormMessage>{errors.language.message}</FormMessage>}
+              </FormItem>
+              
+              <input type="hidden" name="creativity" value={creativity} />
 
-              <SubmitButton />
+              <Button type="submit" disabled={isPending}>
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Snippet'
+                )}
+              </Button>
             </form>
-          </FormProvider>
         </CardContent>
       </Card>
       <Card>
@@ -195,7 +162,7 @@ export default function CodeSnippetsPage() {
         <CardContent>
           <pre className="h-full min-h-[400px] w-full overflow-auto rounded-lg bg-secondary p-4 text-secondary-foreground whitespace-pre-wrap">
             <code className="font-code text-sm">
-              {formState.isSubmitting && !state.data ? (
+              {isPending && !state.data ? (
                 <div className="flex items-center justify-center h-full">
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     <p>Generating snippet...</p>

@@ -1,9 +1,6 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { useForm, FormProvider, useFormContext } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Card,
   CardContent,
@@ -14,9 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -31,6 +26,10 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+
 
 const formSchema = z.object({
   apiDefinition: z
@@ -45,26 +44,9 @@ const initialState = {
   data: null,
 };
 
-function SubmitButton() {
-  const { formState } = useFormContext();
-  const isSubmitting = formState.isSubmitting;
-
-  return (
-    <Button type="submit" disabled={isSubmitting}>
-      {isSubmitting ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Generating...
-        </>
-      ) : (
-        'Generate Test Cases'
-      )}
-    </Button>
-  );
-}
 
 export default function AiTestingPage() {
-  const [state, formAction] = useActionState(generateTestCasesAction, initialState);
+  const [state, formAction, isPending] = useActionState(generateTestCasesAction, initialState);
   const { toast } = useToast();
   const [creativity, setCreativity] = useState(0.5);
 
@@ -91,17 +73,8 @@ export default function AiTestingPage() {
     },
   });
 
-  const { handleSubmit, formState } = form;
+  const { formState: { errors }, getValues } = form;
 
-  const handleFormAction = (data: z.infer<typeof formSchema>) => {
-    const formData = new FormData();
-    formData.append('apiDefinition', data.apiDefinition);
-    if (data.dataModel) {
-      formData.append('dataModel', data.dataModel);
-    }
-    formData.append('creativity', creativity.toString());
-    formAction(formData);
-  };
 
   useEffect(() => {
     if (state.message && state.message !== 'Success') {
@@ -123,45 +96,46 @@ export default function AiTestingPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <FormProvider {...form}>
-            <form onSubmit={handleSubmit(handleFormAction)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="apiDefinition"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>API Definition</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        className="min-h-[150px] font-code text-sm"
-                        placeholder="Paste your API definition here..."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+            <form action={formAction} className="space-y-6">
+              <FormItem>
+                <FormLabel>API Definition</FormLabel>
+                <FormControl>
+                  <Textarea
+                    name="apiDefinition"
+                    className="min-h-[150px] font-code text-sm"
+                    placeholder="Paste your API definition here..."
+                    defaultValue={getValues('apiDefinition')}
+                  />
+                </FormControl>
+                {errors.apiDefinition && <FormMessage>{errors.apiDefinition.message}</FormMessage>}
+              </FormItem>
+              
+              <FormItem>
+                <FormLabel>Data Model (Optional)</FormLabel>
+                <FormControl>
+                  <Textarea
+                    name="dataModel"
+                    className="min-h-[150px] font-code text-sm"
+                    placeholder="Paste the JSON schema for your data model..."
+                    defaultValue={getValues('dataModel')}
+                  />
+                </FormControl>
+                {errors.dataModel && <FormMessage>{errors.dataModel.message}</FormMessage>}
+              </FormItem>
+              
+              <input type="hidden" name="creativity" value={creativity} />
+              
+              <Button type="submit" disabled={isPending}>
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Test Cases'
                 )}
-              />
-              <FormField
-                control={form.control}
-                name="dataModel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data Model (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        className="min-h-[150px] font-code text-sm"
-                        placeholder="Paste the JSON schema for your data model..."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <SubmitButton />
+              </Button>
             </form>
-          </FormProvider>
         </CardContent>
       </Card>
       <Card>
@@ -172,7 +146,7 @@ export default function AiTestingPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {formState.isSubmitting && !state.data ? (
+          {isPending && !state.data ? (
             <div className="flex items-center justify-center rounded-lg border p-8 h-full min-h-[400px]">
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 <p className="text-muted-foreground">Generating test cases...</p>

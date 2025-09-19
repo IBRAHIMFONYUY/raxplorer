@@ -1,9 +1,6 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { useForm, FormProvider, useFormContext } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Card,
   CardContent,
@@ -16,7 +13,6 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Form,
   FormControl,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -24,6 +20,10 @@ import {
 import { generateDocsAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
 
 const formSchema = z.object({
   prompt: z
@@ -38,26 +38,9 @@ const initialState = {
   data: null,
 };
 
-function SubmitButton() {
-  const { formState } = useFormContext();
-  const isSubmitting = formState.isSubmitting;
-
-  return (
-    <Button type="submit" disabled={isSubmitting}>
-      {isSubmitting ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Generating...
-        </>
-      ) : (
-        'Generate Documentation'
-      )}
-    </Button>
-  );
-}
 
 export default function AutoDocsPage() {
-  const [state, formAction] = useActionState(generateDocsAction, initialState);
+  const [state, formAction, isPending] = useActionState(generateDocsAction, initialState);
   const { toast } = useToast();
   const [creativity, setCreativity] = useState(0.5);
 
@@ -74,14 +57,7 @@ Responses:
     },
   });
 
-  const { formState, handleSubmit } = form;
-
-  const handleFormAction = (data: z.infer<typeof formSchema>) => {
-    const formData = new FormData();
-    formData.append('prompt', data.prompt);
-    formData.append('creativity', creativity.toString());
-    formAction(formData);
-  };
+  const { control, formState: { errors } } = form;
   
   useEffect(() => {
     const storedCreativity = localStorage.getItem('aiCreativity');
@@ -111,31 +87,34 @@ Responses:
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <FormProvider {...form}>
             <form
-              onSubmit={handleSubmit(handleFormAction)}
+              action={formAction}
               className="space-y-6"
             >
-              <FormField
-                control={form.control}
-                name="prompt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Endpoint Definition</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        className="min-h-[300px] font-code text-sm"
-                        placeholder="Paste your endpoint definition here..."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              <FormItem>
+                <FormLabel>Endpoint Definition</FormLabel>
+                <FormControl>
+                  <Textarea
+                    name="prompt"
+                    className="min-h-[300px] font-code text-sm"
+                    placeholder="Paste your endpoint definition here..."
+                    defaultValue={form.getValues('prompt')}
+                  />
+                </FormControl>
+                {errors.prompt && <FormMessage>{errors.prompt.message}</FormMessage>}
+              </FormItem>
+              <input type="hidden" name="creativity" value={creativity} />
+              <Button type="submit" disabled={isPending}>
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Documentation'
                 )}
-              />
-              <SubmitButton />
+              </Button>
             </form>
-          </FormProvider>
         </CardContent>
       </Card>
       <Card>
@@ -147,7 +126,7 @@ Responses:
         </CardHeader>
         <CardContent>
            <div className="prose prose-sm dark:prose-invert max-w-none rounded-lg border bg-card-foreground/5 p-4 h-full min-h-[400px]">
-             {formState.isSubmitting && !state.data ? (
+             {isPending && !state.data ? (
                 <div className="flex items-center justify-center h-full">
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     <p>Generating documentation...</p>

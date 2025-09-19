@@ -91,7 +91,7 @@ async function generateRequestAction(currentState: any, formData: FormData) {
     if (!prompt) return { message: 'Prompt is empty' };
 
     try {
-        const creativity = parseFloat(localStorage.getItem('aiCreativity') || '0.5');
+        const creativity = parseFloat(formData.get('creativity') as string || '0.5');
         const result = await generateRequestFromPrompt({ prompt, creativity });
         return { message: 'Success', data: result };
     } catch (error) {
@@ -117,6 +117,7 @@ export function ApiPlayground() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [authMethod, setAuthMethod] = useState('none');
   const [bearerToken, setBearerToken] = useState('');
+  const [creativity, setCreativity] = useState(0.5);
 
   // Challenge state
   const [challengeId, setChallengeId] = useState<string | null>(null);
@@ -127,7 +128,7 @@ export function ApiPlayground() {
   const previousAiData = useRef<GenerateRequestOutput | null>(null);
 
    useEffect(() => {
-    // Load history from localStorage
+    // Load settings from localStorage
     const storedHistory = localStorage.getItem('requestHistory');
     if (storedHistory) {
       setHistory(JSON.parse(storedHistory));
@@ -137,6 +138,11 @@ export function ApiPlayground() {
     if (storedBearerToken) {
       setBearerToken(storedBearerToken);
       if (storedBearerToken) setAuthMethod('bearer');
+    }
+
+    const storedCreativity = localStorage.getItem('aiCreativity');
+    if (storedCreativity) {
+      setCreativity(parseFloat(storedCreativity));
     }
   }, []);
 
@@ -693,6 +699,7 @@ export function ApiPlayground() {
               className="text-base flex-1"
               disabled={isAiPending}
             />
+             <input type="hidden" name="creativity" value={creativity} />
             <Button type="submit" disabled={isAiPending}>
               {isAiPending ? (
                 <>

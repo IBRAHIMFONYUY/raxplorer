@@ -88,9 +88,9 @@ const initialChallenges = [
   },
 ];
 
-async function generateChallengeAction() {
+async function generateChallengeAction(currentState: any, formData: FormData) {
     try {
-        const creativity = parseFloat(localStorage.getItem('aiCreativity') || '0.5');
+        const creativity = parseFloat(formData.get('creativity') as string || '0.5');
         const result = await generateChallenge({ creativity });
         return { message: 'Success', data: result };
     } catch (error) {
@@ -140,6 +140,14 @@ const ChallengeCard = ({ challenge, isAiGenerated = false }: { challenge: any, i
 export default function ChallengesPage() {
   const [aiState, aiFormAction, isAiPending] = useActionState(generateChallengeAction, { data: null });
   const [challenges, setChallenges] = useState(initialChallenges);
+  const [creativity, setCreativity] = useState(0.5);
+
+  useEffect(() => {
+    const storedCreativity = localStorage.getItem('aiCreativity');
+    if (storedCreativity) {
+      setCreativity(parseFloat(storedCreativity));
+    }
+  }, []);
 
   useEffect(() => {
     if (aiState.data) {
@@ -172,6 +180,7 @@ export default function ChallengesPage() {
         </CardHeader>
         <CardContent>
           <form action={aiFormAction}>
+            <input type="hidden" name="creativity" value={creativity} />
             <Button type="submit" disabled={isAiPending}>
               {isAiPending ? (
                 <>
