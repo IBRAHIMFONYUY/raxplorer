@@ -26,8 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useState, useEffect } from 'react';
-import { Clock, History, Loader2, Trash2 } from 'lucide-react';
+import { useState, useEffect, useActionState } from 'react';
+import { Clock, History, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -44,6 +44,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { generateRequestFromPrompt, GenerateRequestOutput } from '@/ai/flows/request-generation';
 
 type KeyValue = {
   key: string;
@@ -83,6 +84,20 @@ const COMMON_HEADERS = [
   'Accept-Language',
 ];
 
+async function generateRequestAction(currentState: any, formData: FormData) {
+    const prompt = formData.get('prompt') as string;
+    if (!prompt) return { message: 'Prompt is empty' };
+
+    try {
+        const result = await generateRequestFromPrompt({ prompt });
+        return { message: 'Success', data: result };
+    } catch (error) {
+        console.error(error);
+        return { message: 'Failed to generate request' };
+    }
+}
+
+
 export default function ApiPlaygroundPage() {
   const searchParams = useSearchParams();
   const [method, setMethod] = useState('GET');
@@ -97,6 +112,20 @@ export default function ApiPlaygroundPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [authMethod, setAuthMethod] = useState('none');
   const [bearerToken, setBearerToken] = useState('');
+
+  const [aiState, aiFormAction, isAiPending] = useActionState(generateRequestAction, { data: null });
+
+  useEffect(() => {
+    if (aiState?.data) {
+      const { method, url, queryParams, headers, body } = aiState.data as GenerateRequestOutput;
+      setMethod(method);
+      setUrl(url);
+      setQueryParams(queryParams || []);
+      setHeaders(headers || []);
+      setBody(body || '');
+    }
+  }, [aiState]);
+
 
   useEffect(() => {
     const challengeId = searchParams.get('challengeId');
@@ -550,6 +579,35 @@ export default function ApiPlaygroundPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col w-full space-y-4">
+        <Card>
+          <CardHeader>
+             <CardTitle className="flex items-center gap-2">
+              <Sparkles className="text-primary" />
+              AI Assistant
+            </CardTitle>
+            <CardDescription>
+              Describe the request you want to make in plain English, and the AI will build it for you.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={aiFormAction} className="flex items-center gap-2">
+              <Input
+                name="prompt"
+                placeholder='e.g., "Get the first 5 comments for post ID 1 from jsonplaceholder"'
+                className="text-base flex-1"
+                disabled={isAiPending}
+              />
+              <Button type="submit" disabled={isAiPending}>
+                {isAiPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {isAiPending ? 'Generating...' : 'Generate'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+
         <Card>
           <CardHeader>
             <CardTitle>Request</CardTitle>
