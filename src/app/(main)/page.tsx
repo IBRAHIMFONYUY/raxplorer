@@ -27,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useState, useEffect, useActionState, useRef } from 'react';
-import { Clock, History, Loader2, Sparkles, Trash2 } from 'lucide-react';
+import { Clock, History, Loader2, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -46,6 +46,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { generateRequestFromPrompt, GenerateRequestOutput } from '@/ai/flows/request-generation';
+import { Logo } from '@/components/icons/logo';
 
 type KeyValue = {
   key: string;
@@ -608,7 +609,7 @@ export default function ApiPlaygroundPage() {
       <Card>
         <CardHeader>
            <CardTitle className="flex items-center gap-2">
-            <Sparkles className="text-primary" />
+            <Logo className="text-primary size-6" />
             AI Assistant
           </CardTitle>
           <CardDescription>
