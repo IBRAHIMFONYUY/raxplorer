@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -24,6 +24,7 @@ import {
 import { generateDocsAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useFormContext } from 'react-hook-form';
 
 const formSchema = z.object({
   prompt: z
@@ -39,7 +40,7 @@ const initialState = {
 };
 
 function SubmitButton() {
-  const { formState } = useForm();
+  const { formState } = useFormContext();
   return (
     <Button type="submit" disabled={formState.isSubmitting}>
       {formState.isSubmitting ? (
@@ -92,7 +93,7 @@ Responses:
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
+          <FormProvider {...form}>
             <form action={formAction} className="space-y-6">
               <FormField
                 control={form.control}
@@ -113,7 +114,7 @@ Responses:
               />
               <SubmitButton />
             </form>
-          </Form>
+          </FormProvider>
         </CardContent>
       </Card>
       <Card>

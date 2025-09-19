@@ -157,8 +157,8 @@ export default function CodeSnippetsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="h-full min-h-[400px] w-full overflow-auto rounded-lg bg-secondary p-4">
-            <code className="font-code text-sm text-secondary-foreground">
+          <pre className="h-full min-h-[400px] w-full overflow-auto rounded-lg bg-gray-900 p-4 text-gray-300 whitespace-pre-wrap">
+            <code className="font-code text-sm">
               {state.data ? state.data : 'Awaiting generation...'}
             </code>
           </pre>

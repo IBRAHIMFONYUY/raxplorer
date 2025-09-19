@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -39,7 +39,7 @@ const initialState = {
 };
 
 function SubmitButton() {
-  const { formState } = useForm();
+  const { formState } = useFormContext();
   return (
     <Button type="submit" disabled={formState.isSubmitting}>
       {formState.isSubmitting ? (
@@ -114,7 +114,7 @@ components:
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
+          <FormProvider {...form}>
             <form action={formAction} className="space-y-6">
               <FormField
                 control={form.control}
@@ -135,7 +135,7 @@ components:
               />
               <SubmitButton />
             </form>
-          </Form>
+          </FormProvider>
         </CardContent>
       </Card>
       <Card>
