@@ -36,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -858,14 +859,16 @@ export default function ApiPlaygroundPage() {
                               <DialogTitle>History Details</DialogTitle>
                               <CardDescription>
                                 A detailed view of a request from {new Date(parseInt(item.id)).toLocaleString()}.
-                                <Button size="sm" variant="outline" className="ml-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
                               </CardDescription>
                             </DialogHeader>
-                            <ScrollArea className="max-h-[60vh]">
+                            <ScrollArea className="max-h-[60vh] p-4">
                               <div className="p-1">
                                 <HistoryItemDetails item={item} />
                               </div>
                             </ScrollArea>
+                            <DialogClose asChild>
+                                <Button size="sm" variant="outline" className="mt-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
+                            </DialogClose>
                           </DialogContent>
                         </Dialog>
                       ))}
