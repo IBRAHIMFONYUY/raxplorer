@@ -26,8 +26,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Key, useState, useEffect, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Clock, History, Loader2, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type KeyValue = {
   key: string;
@@ -42,6 +43,14 @@ type ResponseData = {
   headers: Record<string, string>;
   body: any;
   timing: Record<string, number>;
+};
+
+type HistoryItem = {
+  id: string;
+  method: string;
+  url: string;
+  status: number;
+  time: string;
 };
 
 const COMMON_HEADERS = [
@@ -67,6 +76,9 @@ export default function ApiPlaygroundPage() {
   const [headerSuggestions, setHeaderSuggestions] = useState<string[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const suggestionBoxRef = useRef<HTMLUListElement>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [authMethod, setAuthMethod] = useState('none');
+  const [bearerToken, setBearerToken] = useState('');
 
   useEffect(() => {
     const challengeId = searchParams.get('challengeId');
@@ -114,6 +126,8 @@ export default function ApiPlaygroundPage() {
     };
 
     let res;
+    let finalStatus = 500;
+    let finalStatusText = 'Client Error';
     try {
       const requestHeaders = new Headers();
       headers.forEach(header => {
@@ -121,6 +135,11 @@ export default function ApiPlaygroundPage() {
           requestHeaders.append(header.key, header.value);
         }
       });
+
+      if (authMethod === 'bearer' && bearerToken) {
+        requestHeaders.set('Authorization', `Bearer ${bearerToken}`);
+      }
+
       if (!['GET', 'HEAD'].includes(method) && body) {
         requestHeaders.append('Content-Type', 'application/json');
       }
@@ -145,6 +164,8 @@ export default function ApiPlaygroundPage() {
       timing.tcpConnection = Date.now();
       timing.tlsHandshake = Date.now();
       timing.firstByte = Date.now();
+      finalStatus = res.status;
+      finalStatusText = res.statusText;
 
       const responseBody = await res.json();
       timing.contentTransfer = Date.now();
@@ -157,7 +178,7 @@ export default function ApiPlaygroundPage() {
         responseHeaders[key] = value;
       });
 
-      setResponse({
+      const newResponse: ResponseData = {
         status: res.status,
         statusText: res.statusText,
         time: `${timing.total - timing.start}ms`,
@@ -172,10 +193,12 @@ export default function ApiPlaygroundPage() {
           'Content Transfer': timing.contentTransfer - timing.firstByte,
           'Total': timing.total - timing.start,
         },
-      });
+      };
+      setResponse(newResponse);
+      addToHistory(method, url, newResponse.status, newResponse.time);
     } catch (error) {
       timing.total = Date.now();
-      setResponse({
+       const errorResponse = {
         status: 500,
         statusText: 'Client Error',
         time: `${timing.total - timing.start}ms`,
@@ -190,16 +213,39 @@ export default function ApiPlaygroundPage() {
           2
         ),
         timing: { 'Total': timing.total - timing.start },
-      });
+      };
+      setResponse(errorResponse);
+      addToHistory(method, url, errorResponse.status, errorResponse.time);
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const addToHistory = (method: string, url: string, status: number, time: string) => {
+    const newHistoryItem: HistoryItem = { id: Date.now().toString(), method, url, status, time };
+    setHistory(prev => [newHistoryItem, ...prev].slice(0, 20)); // Keep last 20 requests
+  };
+
+  const loadFromHistory = (item: HistoryItem) => {
+    setMethod(item.method);
+    setUrl(item.url);
+    // You might want to store/retrieve more details in history object
+    setQueryParams([]);
+    setHeaders([]);
+    setBody('');
   };
 
   const addRow = (
     setter: React.Dispatch<React.SetStateAction<KeyValue[]>>
   ) => {
     setter(prev => [...prev, { key: '', value: '' }]);
+  };
+
+  const removeRow = (
+    setter: React.Dispatch<React.SetStateAction<KeyValue[]>>,
+    index: number
+  ) => {
+    setter(prev => prev.filter((_, i) => i !== index));
   };
 
   const updateRow = (
@@ -270,12 +316,13 @@ export default function ApiPlaygroundPage() {
           <TableRow>
             <TableHead>Key</TableHead>
             <TableHead>Value</TableHead>
+            <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((item, index) => (
             <TableRow key={index}>
-              <TableCell className="relative">
+              <TableCell className="relative p-2">
                 <Input
                   value={item.key}
                   onChange={e => updateRow(setter, index, 'key', e.target.value)}
@@ -298,7 +345,7 @@ export default function ApiPlaygroundPage() {
                   </ul>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="p-2">
                 <Input
                   value={item.value}
                   onChange={e =>
@@ -307,6 +354,11 @@ export default function ApiPlaygroundPage() {
                   placeholder={valuePlaceholder}
                   className="font-code"
                 />
+              </TableCell>
+              <TableCell className="p-2">
+                <Button variant="ghost" size="icon" onClick={() => removeRow(setter, index)}>
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
               </TableCell>
             </TableRow>
           ))}
@@ -324,157 +376,218 @@ export default function ApiPlaygroundPage() {
   );
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Select value={method} onValueChange={setMethod}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="GET">GET</SelectItem>
-                <SelectItem value="POST">POST</SelectItem>
-                <SelectItem value="PUT">PUT</SelectItem>
-                <SelectItem value="PATCH">PATCH</SelectItem>
-                <SelectItem value="DELETE">DELETE</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              value={url}
-              onChange={e => setUrl(e.target.value)}
-              placeholder="https://api.example.com/v1/users"
-            />
-            <Button onClick={handleSend} disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? 'Sending...' : 'Send'}
-            </Button>
-          </div>
+    <div className="flex h-[calc(100vh-5rem)] gap-4">
+      <Card className="w-1/4 flex flex-col">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5"/> History</CardTitle>
+           <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="params">
-            <TabsList>
-              <TabsTrigger value="params">Params</TabsTrigger>
-              <TabsTrigger value="headers">Headers</TabsTrigger>
-              <TabsTrigger value="body">Body</TabsTrigger>
-            </TabsList>
-            <TabsContent value="params" className="mt-4">
-              <KeyValueTable
-                data={queryParams}
-                setter={setQueryParams}
-                keyPlaceholder="page"
-                valuePlaceholder="1"
-              />
-            </TabsContent>
-            <TabsContent value="headers" className="mt-4">
-              <KeyValueTable
-                data={headers}
-                setter={setHeaders}
-                keyPlaceholder="Authorization"
-                valuePlaceholder="Bearer ..."
-                isHeaders={true}
-              />
-            </TabsContent>
-            <TabsContent value="body" className="mt-4">
-              <Textarea
-                placeholder='{ "key": "value" }'
-                className="min-h-[200px] font-code"
-                value={body}
-                onChange={e => setBody(e.target.value)}
-                disabled={method === 'GET' || method === 'HEAD'}
-              />
-            </TabsContent>
-          </Tabs>
+        <CardContent className="flex-grow p-0 overflow-hidden">
+           <ScrollArea className="h-full">
+            {history.length > 0 ? (
+              <div className="space-y-1 p-2">
+              {history.map(item => (
+                <button key={item.id} onClick={() => loadFromHistory(item)} className="w-full text-left p-2 rounded-md hover:bg-secondary">
+                  <div className="flex justify-between items-center">
+                    <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">{item.url}</p>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
+                </button>
+              ))}
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <p className="text-muted-foreground text-sm">No history yet</p>
+              </div>
+            )}
+           </ScrollArea>
         </CardContent>
       </Card>
-
-      {isLoading && (
-        <div className="flex items-center justify-center rounded-lg border p-8">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          <p className="text-muted-foreground">Loading response...</p>
-        </div>
-      )}
-
-      {response && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Response</CardTitle>
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    response.status >= 200 && response.status < 300
-                      ? 'bg-green-500'
-                      : 'bg-red-500'
-                  }`}
-                ></span>
-                <span>
-                  Status: {response.status} {response.statusText}
-                </span>
-              </div>
-              <span>Time: {response.time}</span>
-              <span>Size: {response.size}</span>
+      <div className="w-3/4 flex flex-col gap-4">
+        <Card className="flex-shrink-0">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Select value={method} onValueChange={setMethod}>
+                <SelectTrigger className="w-[120px] font-bold">
+                  <SelectValue placeholder="Method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                  <SelectItem value="PUT">PUT</SelectItem>
+                  <SelectItem value="PATCH">PATCH</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+                placeholder="https://api.example.com/v1/users"
+                className="text-base"
+              />
+              <Button onClick={handleSend} disabled={isLoading} size="lg">
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading ? 'Sending...' : 'Send'}
+              </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="body">
+             <Tabs defaultValue="params" className="mt-4">
               <TabsList>
-                <TabsTrigger value="body">Body</TabsTrigger>
+                <TabsTrigger value="params">Params</TabsTrigger>
+                <TabsTrigger value="auth">Authorization</TabsTrigger>
                 <TabsTrigger value="headers">Headers</TabsTrigger>
-                <TabsTrigger value="timing">Timing</TabsTrigger>
+                <TabsTrigger value="body">Body</TabsTrigger>
               </TabsList>
-              <TabsContent value="body" className="mt-4">
-                <pre className="w-full overflow-auto rounded-md bg-secondary p-4 text-sm">
-                  <code className="font-code text-secondary-foreground">
-                    {response.body}
-                  </code>
-                </pre>
+              <TabsContent value="params" className="mt-4">
+                <KeyValueTable
+                  data={queryParams}
+                  setter={setQueryParams}
+                  keyPlaceholder="page"
+                  valuePlaceholder="1"
+                />
+              </TabsContent>
+              <TabsContent value="auth" className="mt-4">
+                <div className="w-1/2 space-y-4">
+                   <Select value={authMethod} onValueChange={setAuthMethod}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Auth Method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Auth</SelectItem>
+                        <SelectItem value="bearer">Bearer Token</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {authMethod === 'bearer' && (
+                      <Input 
+                        placeholder="Token"
+                        value={bearerToken}
+                        onChange={(e) => setBearerToken(e.target.value)}
+                        className="font-code"
+                      />
+                    )}
+                </div>
               </TabsContent>
               <TabsContent value="headers" className="mt-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Key</TableHead>
-                      <TableHead>Value</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(response.headers).map(
-                      ([key, value]: [
-                        string,
-                        string,
-                      ]) => (
-                        <TableRow key={key}>
-                          <TableCell className="font-medium">{key}</TableCell>
-                          <TableCell>{value}</TableCell>
-                        </TableRow>
-                      )
-                    )}
-                  </TableBody>
-                </Table>
+                <KeyValueTable
+                  data={headers}
+                  setter={setHeaders}
+                  keyPlaceholder="Authorization"
+                  valuePlaceholder="Bearer ..."
+                  isHeaders={true}
+                />
               </TabsContent>
-              <TabsContent value="timing" className="mt-4">
-                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Phase</TableHead>
-                      <TableHead>Duration (ms)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(response.timing).map(([phase, duration]) => (
-                      <TableRow key={phase}>
-                        <TableCell className="font-medium">{phase}</TableCell>
-                        <TableCell>{duration.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <TabsContent value="body" className="mt-4">
+                <Textarea
+                  placeholder='{ "key": "value" }'
+                  className="min-h-[150px] font-code"
+                  value={body}
+                  onChange={e => setBody(e.target.value)}
+                  disabled={method === 'GET' || method === 'HEAD'}
+                />
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
-      )}
+
+        <div className="flex-grow overflow-auto">
+          {isLoading && (
+            <div className="flex items-center justify-center rounded-lg border h-full">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <p className="text-muted-foreground">Loading response...</p>
+            </div>
+          )}
+
+          {!isLoading && !response && (
+             <div className="flex items-center justify-center rounded-lg border h-full">
+              <p className="text-muted-foreground">Send a request to see the response</p>
+            </div>
+          )}
+
+          {response && (
+            <Card className="h-full flex flex-col">
+              <CardHeader>
+                <CardTitle>Response</CardTitle>
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        response.status >= 200 && response.status < 300
+                          ? 'bg-green-500'
+                          : 'bg-red-500'
+                      }`}
+                    ></span>
+                    <span>
+                      Status: {response.status} {response.statusText}
+                    </span>
+                  </div>
+                  <span>Time: {response.time}</span>
+                  <span>Size: {response.size}</span>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-grow p-0 overflow-hidden">
+                <Tabs defaultValue="body" className="h-full flex flex-col">
+                  <div className="px-6">
+                    <TabsList>
+                      <TabsTrigger value="body">Body</TabsTrigger>
+                      <TabsTrigger value="headers">Headers</TabsTrigger>
+                      <TabsTrigger value="timing">Timing</TabsTrigger>
+                    </TabsList>
+                  </div>
+                  <TabsContent value="body" className="mt-4 flex-grow overflow-auto px-6 pb-6">
+                    <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm">
+                      <code className="font-code text-secondary-foreground">
+                        {response.body}
+                      </code>
+                    </pre>
+                  </TabsContent>
+                  <TabsContent value="headers" className="mt-4 flex-grow overflow-auto px-6 pb-6">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Key</TableHead>
+                          <TableHead>Value</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(response.headers).map(
+                          ([key, value]: [
+                            string,
+                            string,
+                          ]) => (
+                            <TableRow key={key}>
+                              <TableCell className="font-medium">{key}</TableCell>
+                              <TableCell>{value}</TableCell>
+                            </TableRow>
+                          )
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TabsContent>
+                  <TabsContent value="timing" className="mt-4 flex-grow overflow-auto px-6 pb-6">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Phase</TableHead>
+                          <TableHead>Duration (ms)</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(response.timing).map(([phase, duration]) => (
+                          <TableRow key={phase}>
+                            <TableCell className="font-medium">{phase}</TableCell>
+                            <TableCell>{duration.toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
