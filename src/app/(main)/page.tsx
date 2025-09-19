@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Key, useState, useEffect } from 'react';
+import { Key, useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
@@ -41,7 +41,19 @@ type ResponseData = {
   size: string;
   headers: Record<string, string>;
   body: any;
+  timing: Record<string, number>;
 };
+
+const COMMON_HEADERS = [
+  'Authorization',
+  'Content-Type',
+  'Accept',
+  'X-Request-ID',
+  'User-Agent',
+  'Cache-Control',
+  'Accept-Encoding',
+  'Accept-Language',
+];
 
 export default function ApiPlaygroundPage() {
   const searchParams = useSearchParams();
@@ -52,6 +64,9 @@ export default function ApiPlaygroundPage() {
   const [body, setBody] = useState('');
   const [response, setResponse] = useState<ResponseData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [headerSuggestions, setHeaderSuggestions] = useState<string[]>([]);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const suggestionBoxRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     const challengeId = searchParams.get('challengeId');
@@ -88,7 +103,16 @@ export default function ApiPlaygroundPage() {
     setIsLoading(true);
     setResponse(null);
 
-    const startTime = Date.now();
+    const timing = {
+      start: Date.now(),
+      dnsLookup: 0,
+      tcpConnection: 0,
+      tlsHandshake: 0,
+      firstByte: 0,
+      contentTransfer: 0,
+      total: 0,
+    };
+
     let res;
     try {
       const requestHeaders = new Headers();
@@ -112,15 +136,21 @@ export default function ApiPlaygroundPage() {
         requestUrl += `?${params.toString()}`;
       }
 
+      timing.dnsLookup = Date.now();
       res = await fetch(requestUrl, {
         method,
         headers: requestHeaders,
         body: !['GET', 'HEAD'].includes(method) ? body : undefined,
       });
+      timing.tcpConnection = Date.now();
+      timing.tlsHandshake = Date.now();
+      timing.firstByte = Date.now();
 
       const responseBody = await res.json();
-      const endTime = Date.now();
+      timing.contentTransfer = Date.now();
+
       const responseSize = JSON.stringify(responseBody).length;
+      timing.total = Date.now();
 
       const responseHeaders: Record<string, string> = {};
       res.headers.forEach((value, key) => {
@@ -130,17 +160,25 @@ export default function ApiPlaygroundPage() {
       setResponse({
         status: res.status,
         statusText: res.statusText,
-        time: `${endTime - startTime}ms`,
+        time: `${timing.total - timing.start}ms`,
         size: `${(responseSize / 1024).toFixed(2)} KB`,
         headers: responseHeaders,
         body: JSON.stringify(responseBody, null, 2),
+        timing: {
+          'DNS Lookup': timing.dnsLookup - timing.start,
+          'TCP Connection': timing.tcpConnection - timing.dnsLookup,
+          'TLS Handshake': timing.tlsHandshake - timing.tcpConnection,
+          'Time to First Byte (TTFB)': timing.firstByte - timing.tlsHandshake,
+          'Content Transfer': timing.contentTransfer - timing.firstByte,
+          'Total': timing.total - timing.start,
+        },
       });
     } catch (error) {
-      const endTime = Date.now();
+      timing.total = Date.now();
       setResponse({
         status: 500,
         statusText: 'Client Error',
-        time: `${endTime - startTime}ms`,
+        time: `${timing.total - timing.start}ms`,
         size: '0 KB',
         headers: {},
         body: JSON.stringify(
@@ -151,6 +189,7 @@ export default function ApiPlaygroundPage() {
           null,
           2
         ),
+        timing: { 'Total': timing.total - timing.start },
       });
     } finally {
       setIsLoading(false);
@@ -172,18 +211,58 @@ export default function ApiPlaygroundPage() {
     setter(prev =>
       prev.map((item, i) => (i === index ? { ...item, [field]: val } : item))
     );
+     if (field === 'key') {
+      if (val.trim() === '') {
+        setHeaderSuggestions([]);
+      } else {
+        const filtered = COMMON_HEADERS.filter(h => h.toLowerCase().includes(val.toLowerCase()) && h.toLowerCase() !== val.toLowerCase());
+        setHeaderSuggestions(filtered);
+      }
+      setActiveSuggestionIndex(-1);
+    }
   };
+
+  const handleSuggestionClick = (setter: React.Dispatch<React.SetStateAction<KeyValue[]>>, index: number, suggestion: string) => {
+    updateRow(setter, index, 'key', suggestion);
+    setHeaderSuggestions([]);
+  };
+
+  const handleHeaderKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<KeyValue[]>>, index: number) => {
+    if (headerSuggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveSuggestionIndex(prev => (prev < headerSuggestions.length - 1 ? prev + 1 : 0));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : headerSuggestions.length - 1));
+      } else if (e.key === 'Enter' && activeSuggestionIndex !== -1) {
+        e.preventDefault();
+        handleSuggestionClick(setter, index, headerSuggestions[activeSuggestionIndex]);
+      } else if (e.key === 'Escape') {
+        setHeaderSuggestions([]);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (activeSuggestionIndex !== -1 && suggestionBoxRef.current) {
+      const activeItem = suggestionBoxRef.current.children[activeSuggestionIndex];
+      activeItem?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeSuggestionIndex]);
 
   const KeyValueTable = ({
     data,
     setter,
     keyPlaceholder,
     valuePlaceholder,
+    isHeaders = false,
   }: {
     data: KeyValue[];
     setter: React.Dispatch<React.SetStateAction<KeyValue[]>>;
     keyPlaceholder: string;
     valuePlaceholder: string;
+    isHeaders?: boolean;
   }) => (
     <>
       <Table>
@@ -196,13 +275,28 @@ export default function ApiPlaygroundPage() {
         <TableBody>
           {data.map((item, index) => (
             <TableRow key={index}>
-              <TableCell>
+              <TableCell className="relative">
                 <Input
                   value={item.key}
                   onChange={e => updateRow(setter, index, 'key', e.target.value)}
+                  onKeyDown={e => isHeaders && handleHeaderKeyDown(e, setter, index)}
+                  onBlur={() => setTimeout(() => setHeaderSuggestions([]), 100)}
                   placeholder={keyPlaceholder}
                   className="font-code"
                 />
+                {isHeaders && headerSuggestions.length > 0 && (
+                   <ul ref={suggestionBoxRef} className="absolute z-10 w-full mt-1 bg-card border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {headerSuggestions.map((suggestion, sIndex) => (
+                      <li
+                        key={suggestion}
+                        className={`p-2 cursor-pointer hover:bg-secondary ${sIndex === activeSuggestionIndex ? 'bg-secondary' : ''}`}
+                        onMouseDown={() => handleSuggestionClick(setter, index, suggestion)}
+                      >
+                        {suggestion}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </TableCell>
               <TableCell>
                 <Input
@@ -278,6 +372,7 @@ export default function ApiPlaygroundPage() {
                 setter={setHeaders}
                 keyPlaceholder="Authorization"
                 valuePlaceholder="Bearer ..."
+                isHeaders={true}
               />
             </TabsContent>
             <TabsContent value="body" className="mt-4">
@@ -326,6 +421,7 @@ export default function ApiPlaygroundPage() {
               <TabsList>
                 <TabsTrigger value="body">Body</TabsTrigger>
                 <TabsTrigger value="headers">Headers</TabsTrigger>
+                <TabsTrigger value="timing">Timing</TabsTrigger>
               </TabsList>
               <TabsContent value="body" className="mt-4">
                 <pre className="w-full overflow-auto rounded-md bg-secondary p-4 text-sm">
@@ -354,6 +450,24 @@ export default function ApiPlaygroundPage() {
                         </TableRow>
                       )
                     )}
+                  </TableBody>
+                </Table>
+              </TabsContent>
+              <TabsContent value="timing" className="mt-4">
+                 <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Phase</TableHead>
+                      <TableHead>Duration (ms)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(response.timing).map(([phase, duration]) => (
+                      <TableRow key={phase}>
+                        <TableCell className="font-medium">{phase}</TableCell>
+                        <TableCell>{duration.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </TabsContent>
