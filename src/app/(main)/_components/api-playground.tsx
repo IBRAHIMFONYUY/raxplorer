@@ -27,8 +27,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useState, useEffect, useActionState, useRef } from 'react';
-import { Clock, History, Loader2, Trash2 } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { Clock, History, Loader2, Trash2, Trophy, X } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
@@ -102,6 +102,8 @@ async function generateRequestAction(currentState: any, formData: FormData) {
 
 export function ApiPlayground() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [method, setMethod] = useState('GET');
   const [url, setUrl] = useState('https://jsonplaceholder.typicode.com/users/1');
   const [queryParams, setQueryParams] = useState<KeyValue[]>([]);
@@ -114,6 +116,11 @@ export function ApiPlayground() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [authMethod, setAuthMethod] = useState('none');
   const [bearerToken, setBearerToken] = useState('');
+
+  // Challenge state
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [challengeTitle, setChallengeTitle] = useState<string | null>(null);
+  const [challengeDescription, setChallengeDescription] = useState<string | null>(null);
 
   const [aiState, aiFormAction, isAiPending] = useActionState(generateRequestAction, { data: null });
   const previousAiData = useRef<GenerateRequestOutput | null>(null);
@@ -284,8 +291,11 @@ export function ApiPlayground() {
 
 
   useEffect(() => {
-    const challengeId = searchParams.get('challengeId');
-    if (challengeId) {
+    const id = searchParams.get('challengeId');
+    setChallengeId(id);
+    if (id) {
+      setChallengeTitle(searchParams.get('title'));
+      setChallengeDescription(searchParams.get('description'));
       setMethod(searchParams.get('method') || 'GET');
       setUrl(searchParams.get('url') || '');
       setBody(searchParams.get('body') || '');
@@ -343,6 +353,13 @@ export function ApiPlayground() {
     setHeaders(item.headers);
     setBody(item.body);
     setResponse(item.response || null);
+  };
+  
+  const endChallenge = () => {
+    setChallengeId(null);
+    setChallengeTitle(null);
+    setChallengeDescription(null);
+    router.replace('/', undefined);
   };
 
   const addRow = (setter: React.Dispatch<React.SetStateAction<KeyValue[]>>) => {
@@ -613,6 +630,22 @@ export function ApiPlayground() {
 
   return (
     <div className="flex flex-col gap-4">
+      {challengeId && (
+        <Card className="bg-primary/10 border-primary/50 relative">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-primary">
+              <Trophy className="size-6" />
+              Challenge Accepted: {challengeTitle}
+            </CardTitle>
+            <CardDescription className="text-foreground/80">{challengeDescription}</CardDescription>
+          </CardHeader>
+          <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-primary/80 hover:text-primary" onClick={endChallenge}>
+            <X className="size-4" />
+            <span className="sr-only">End Challenge</span>
+          </Button>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
            <CardTitle className="flex items-center gap-2">
@@ -721,7 +754,7 @@ export function ApiPlayground() {
             <TabsContent value="body" className="mt-4">
               <Textarea
                 placeholder='{ "key": "value" }'
-                className="h-40 font-code"
+                className="h-40"
                 value={body}
                 onChange={e => setBody(e.target.value)}
                 disabled={method === 'GET' || method === 'HEAD'}

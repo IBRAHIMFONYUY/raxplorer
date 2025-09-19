@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,7 +10,7 @@ import { generateChallenge, GenerateChallengeOutput } from '@/ai/flows/challenge
 import { Loader2, Wand2 } from 'lucide-react';
 
 
-const challenges = [
+const initialChallenges = [
   {
     id: 'get-request',
     title: "The GET Requestor",
@@ -119,6 +119,8 @@ const ChallengeCard = ({ challenge, isAiGenerated = false }: { challenge: any, i
           pathname: '/',
           query: {
             challengeId: challenge.id,
+            title: challenge.title,
+            description: challenge.description,
             method: challenge.request.method,
             url: challenge.request.url,
             body: challenge.request.body,
@@ -136,6 +138,19 @@ const ChallengeCard = ({ challenge, isAiGenerated = false }: { challenge: any, i
 
 export default function ChallengesPage() {
   const [aiState, aiFormAction, isAiPending] = useActionState(generateChallengeAction, { data: null });
+  const [challenges, setChallenges] = useState(initialChallenges);
+
+  useEffect(() => {
+    if (aiState.data) {
+      // Add the new AI-generated challenge to the top of the list, preventing duplicates
+      setChallenges(prev => {
+        const isDuplicate = prev.some(c => c.id === (aiState.data as GenerateChallengeOutput).id);
+        if (isDuplicate) return prev;
+        return [{ ...(aiState.data as GenerateChallengeOutput), status: 'Start', progress: 0 }, ...prev];
+      });
+    }
+  }, [aiState.data]);
+
 
   return (
     <div className="flex w-full flex-col">
@@ -171,11 +186,8 @@ export default function ChallengesPage() {
       </Card>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {aiState.data && (
-           <ChallengeCard challenge={aiState.data as GenerateChallengeOutput} isAiGenerated={true} />
-        )}
         {challenges.map((challenge) => (
-          <ChallengeCard key={challenge.id} challenge={challenge} />
+          <ChallengeCard key={challenge.id} challenge={challenge} isAiGenerated={!initialChallenges.some(c => c.id === challenge.id)} />
         ))}
       </div>
     </div>
