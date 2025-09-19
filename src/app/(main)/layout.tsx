@@ -36,6 +36,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from '@/components/icons/logo';
+import { SettingsModal } from './_components/settings-modal';
 
 const navItems = [
   { href: '/', label: 'API Playground', icon: LayoutGrid },
@@ -53,6 +54,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
 
   return (
     <SidebarProvider>
@@ -104,13 +106,11 @@ export default function MainLayout({
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Link href="#" className="flex w-full items-center gap-2">
+              <DropdownMenuItem onSelect={() => setIsSettingsOpen(true)}>
+                <div className="flex w-full cursor-pointer items-center gap-2">
                   <Settings className="size-4" /> Settings
-                </Link>
+                </div>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
@@ -118,6 +118,7 @@ export default function MainLayout({
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </SidebarInset>
+      <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </SidebarProvider>
   );
 }
