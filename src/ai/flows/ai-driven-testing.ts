@@ -59,6 +59,23 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateTestCasesOutputSchema},
   prompt: `You are an expert in API testing. Based on the provided API endpoint definition and data model, generate a comprehensive set of test cases. Include tests for the "happy path" (valid inputs), as well as tests for error handling and edge cases (e.g., invalid data types, missing fields, authentication errors).
 
+Your output must be a JSON object with a single key "testCases", which is an array of test case objects. Each test case object must have the following structure:
+- "description": A string describing the test case.
+- "request": An object with "method", "path", and optionally "headers" and "body".
+- "expectedResponse": An object with "statusCode" and optionally "body".
+
+Example structure for a single test case:
+{
+  "description": "Successful retrieval of a user.",
+  "request": {
+    "method": "GET",
+    "path": "/users/123"
+  },
+  "expectedResponse": {
+    "statusCode": 200
+  }
+}
+
 API Definition:
 {{{apiDefinition}}}
 
@@ -67,7 +84,7 @@ Data Model:
 {{{dataModel}}}
 {{/if}}
 
-Generate the test cases.`,
+Generate the test cases now.`,
 });
 
 const generateTestCasesFlow = ai.defineFlow(
