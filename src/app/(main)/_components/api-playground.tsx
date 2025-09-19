@@ -581,8 +581,8 @@ export function ApiPlayground() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {item.queryParams.map(p => (
-                <TableRow key={p.key}>
+              {item.queryParams.map((p, index) => (
+                <TableRow key={`${p.key}-${index}`}>
                   <TableCell>{p.key}</TableCell>
                   <TableCell>{p.value}</TableCell>
                 </TableRow>
@@ -603,8 +603,8 @@ export function ApiPlayground() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {item.headers.map(h => (
-                <TableRow key={h.key}>
+              {item.headers.map((h, index) => (
+                <TableRow key={`${h.key}-${index}`}>
                   <TableCell>{h.key}</TableCell>
                   <TableCell>{h.value}</TableCell>
                 </TableRow>
