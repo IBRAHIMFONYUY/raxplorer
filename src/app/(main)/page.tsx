@@ -27,7 +27,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useState, useEffect, useRef } from 'react';
-import { Clock, History, Loader2, Trash2 } from 'lucide-react';
+import {
+  Clock,
+  History,
+  Loader2,
+  Trash2,
+  Book,
+  Folder,
+  Plus,
+  Search,
+  Code2,
+} from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -198,7 +208,7 @@ export default function ApiPlaygroundPage() {
       } catch {
         responseBody = responseText;
       }
-      
+
       const responseSize = responseText.length;
       timing.total = Date.now();
 
@@ -220,13 +230,13 @@ export default function ApiPlaygroundPage() {
           'TLS Handshake': timing.tlsHandshake - timing.tcpConnection,
           'Time to First Byte (TTFB)': timing.firstByte - timing.tlsHandshake,
           'Content Transfer': timing.contentTransfer - timing.firstByte,
-          'Total': timing.total - timing.start,
+          Total: timing.total - timing.start,
         },
       };
       setResponse(fullResponse);
     } catch (error) {
       timing.total = Date.now();
-       fullResponse = {
+      fullResponse = {
         status: 500,
         statusText: 'Client Error',
         time: `${timing.total - timing.start}ms`,
@@ -235,12 +245,14 @@ export default function ApiPlaygroundPage() {
         body: JSON.stringify(
           {
             error:
-              error instanceof Error ? error.message : 'An unknown error occurred',
+              error instanceof Error
+                ? error.message
+                : 'An unknown error occurred',
           },
           null,
           2
         ),
-        timing: { 'Total': timing.total - timing.start },
+        timing: { Total: timing.total - timing.start },
       };
       setResponse(fullResponse);
     } finally {
@@ -248,12 +260,19 @@ export default function ApiPlaygroundPage() {
       setIsLoading(false);
     }
   };
-  
-  const addToHistory = (method: string, url: string, queryParams: KeyValue[], headers: KeyValue[], body: string, response: ResponseData | null) => {
-    const newHistoryItem: HistoryItem = { 
-      id: Date.now().toString(), 
-      method, 
-      url, 
+
+  const addToHistory = (
+    method: string,
+    url: string,
+    queryParams: KeyValue[],
+    headers: KeyValue[],
+    body: string,
+    response: ResponseData | null
+  ) => {
+    const newHistoryItem: HistoryItem = {
+      id: Date.now().toString(),
+      method,
+      url,
       status: response?.status || 500,
       time: response?.time || '0ms',
       queryParams,
@@ -273,9 +292,7 @@ export default function ApiPlaygroundPage() {
     setResponse(item.response || null);
   };
 
-  const addRow = (
-    setter: React.Dispatch<React.SetStateAction<KeyValue[]>>
-  ) => {
+  const addRow = (setter: React.Dispatch<React.SetStateAction<KeyValue[]>>) => {
     setter(prev => [...prev, { key: '', value: '' }]);
   };
 
@@ -295,33 +312,53 @@ export default function ApiPlaygroundPage() {
     setter(prev =>
       prev.map((item, i) => (i === index ? { ...item, [field]: val } : item))
     );
-     if (field === 'key') {
+    if (field === 'key') {
       if (val.trim() === '') {
         setHeaderSuggestions([]);
       } else {
-        const filtered = COMMON_HEADERS.filter(h => h.toLowerCase().includes(val.toLowerCase()) && h.toLowerCase() !== val.toLowerCase());
+        const filtered = COMMON_HEADERS.filter(
+          h =>
+            h.toLowerCase().includes(val.toLowerCase()) &&
+            h.toLowerCase() !== val.toLowerCase()
+        );
         setHeaderSuggestions(filtered);
       }
       setActiveSuggestionIndex(-1);
     }
   };
 
-  const handleSuggestionClick = (setter: React.Dispatch<React.SetStateAction<KeyValue[]>>, index: number, suggestion: string) => {
+  const handleSuggestionClick = (
+    setter: React.Dispatch<React.SetStateAction<KeyValue[]>>,
+    index: number,
+    suggestion: string
+  ) => {
     updateRow(setter, index, 'key', suggestion);
     setHeaderSuggestions([]);
   };
 
-  const handleHeaderKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<KeyValue[]>>, index: number) => {
+  const handleHeaderKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    setter: React.Dispatch<React.SetStateAction<KeyValue[]>>,
+    index: number
+  ) => {
     if (headerSuggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setActiveSuggestionIndex(prev => (prev < headerSuggestions.length - 1 ? prev + 1 : 0));
+        setActiveSuggestionIndex(prev =>
+          prev < headerSuggestions.length - 1 ? prev + 1 : 0
+        );
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : headerSuggestions.length - 1));
+        setActiveSuggestionIndex(prev =>
+          prev > 0 ? prev - 1 : headerSuggestions.length - 1
+        );
       } else if (e.key === 'Enter' && activeSuggestionIndex !== -1) {
         e.preventDefault();
-        handleSuggestionClick(setter, index, headerSuggestions[activeSuggestionIndex]);
+        handleSuggestionClick(
+          setter,
+          index,
+          headerSuggestions[activeSuggestionIndex]
+        );
       } else if (e.key === 'Escape') {
         setHeaderSuggestions([]);
       }
@@ -330,7 +367,8 @@ export default function ApiPlaygroundPage() {
 
   useEffect(() => {
     if (activeSuggestionIndex !== -1 && suggestionBoxRef.current) {
-      const activeItem = suggestionBoxRef.current.children[activeSuggestionIndex];
+      const activeItem =
+        suggestionBoxRef.current.children[activeSuggestionIndex];
       activeItem?.scrollIntoView({ block: 'nearest' });
     }
   }, [activeSuggestionIndex]);
@@ -363,19 +401,28 @@ export default function ApiPlaygroundPage() {
               <TableCell className="relative p-2">
                 <Input
                   value={item.key}
-                  onChange={e => updateRow(setter, index, 'key', e.target.value)}
+                  onChange={e =>
+                    updateRow(setter, index, 'key', e.target.value)
+                  }
                   onKeyDown={e => isHeaders && handleHeaderKeyDown(e, setter, index)}
                   onBlur={() => setTimeout(() => setHeaderSuggestions([]), 100)}
                   placeholder={keyPlaceholder}
                   className="font-code"
                 />
                 {isHeaders && headerSuggestions.length > 0 && (
-                   <ul ref={suggestionBoxRef} className="absolute z-10 w-full mt-1 bg-card border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                  <ul
+                    ref={suggestionBoxRef}
+                    className="absolute z-10 w-full mt-1 bg-card border rounded-md shadow-lg max-h-40 overflow-y-auto"
+                  >
                     {headerSuggestions.map((suggestion, sIndex) => (
                       <li
                         key={suggestion}
-                        className={`p-2 cursor-pointer hover:bg-secondary ${sIndex === activeSuggestionIndex ? 'bg-secondary' : ''}`}
-                        onMouseDown={() => handleSuggestionClick(setter, index, suggestion)}
+                        className={`p-2 cursor-pointer hover:bg-secondary ${
+                          sIndex === activeSuggestionIndex ? 'bg-secondary' : ''
+                        }`}
+                        onMouseDown={() =>
+                          handleSuggestionClick(setter, index, suggestion)
+                        }
                       >
                         {suggestion}
                       </li>
@@ -394,7 +441,11 @@ export default function ApiPlaygroundPage() {
                 />
               </TableCell>
               <TableCell className="p-2">
-                <Button variant="ghost" size="icon" onClick={() => removeRow(setter, index)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeRow(setter, index)}
+                >
                   <Trash2 className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </TableCell>
@@ -412,37 +463,62 @@ export default function ApiPlaygroundPage() {
       </Button>
     </>
   );
-  
+
   const HistoryItemDetails = ({ item }: { item: HistoryItem }) => (
     <div className="space-y-6 text-sm">
       <div>
         <h3 className="font-semibold text-base mb-2">Request</h3>
         <div className="space-y-1">
-          <div><span className="font-medium">Method:</span> <Badge variant="outline">{item.method}</Badge></div>
+          <div>
+            <span className="font-medium">Method:</span>{' '}
+            <Badge variant="outline">{item.method}</Badge>
+          </div>
           <div className="font-medium">URL:</div>
-          <div className="font-code bg-secondary p-2 rounded-md break-all">{item.url}</div>
+          <div className="font-code bg-secondary p-2 rounded-md break-all">
+            {item.url}
+          </div>
         </div>
       </div>
-      
+
       {item.queryParams.length > 0 && (
         <div>
           <h4 className="font-semibold mb-2">Query Params</h4>
           <Table>
-            <TableHeader><TableRow><TableHead>Key</TableHead><TableHead>Value</TableHead></TableRow></TableHeader>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Key</TableHead>
+                <TableHead>Value</TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
-              {item.queryParams.map(p => <TableRow key={p.key}><TableCell>{p.key}</TableCell><TableCell>{p.value}</TableCell></TableRow>)}
+              {item.queryParams.map(p => (
+                <TableRow key={p.key}>
+                  <TableCell>{p.key}</TableCell>
+                  <TableCell>{p.value}</TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>
       )}
-      
+
       {item.headers.length > 0 && (
         <div>
           <h4 className="font-semibold mb-2">Headers</h4>
-           <Table>
-            <TableHeader><TableRow><TableHead>Key</TableHead><TableHead>Value</TableHead></TableRow></TableHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Key</TableHead>
+                <TableHead>Value</TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
-              {item.headers.map(h => <TableRow key={h.key}><TableCell>{h.key}</TableCell><TableCell>{h.value}</TableCell></TableRow>)}
+              {item.headers.map(h => (
+                <TableRow key={h.key}>
+                  <TableCell>{h.key}</TableCell>
+                  <TableCell>{h.value}</TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>
@@ -451,138 +527,212 @@ export default function ApiPlaygroundPage() {
       {item.body && (
         <div>
           <h4 className="font-semibold mb-2">Body</h4>
-          <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm"><code className="font-code text-secondary-foreground">{item.body}</code></pre>
+          <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm">
+            <code className="font-code text-secondary-foreground">
+              {item.body}
+            </code>
+          </pre>
         </div>
       )}
 
       {item.response && (
         <div>
-           <h3 className="font-semibold text-base mb-2">Response</h3>
-           <div className="flex items-center gap-4 text-sm mb-2">
-              <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${item.response.status >= 200 && item.response.status < 300 ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                <span>Status: {item.response.status} {item.response.statusText}</span>
-              </div>
-              <span>Time: {item.response.time}</span>
-              <span>Size: {item.response.size}</span>
+          <h3 className="font-semibold text-base mb-2">Response</h3>
+          <div className="flex items-center gap-4 text-sm mb-2">
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  item.response.status >= 200 && item.response.status < 300
+                    ? 'bg-green-500'
+                    : 'bg-red-500'
+                }`}
+              ></span>
+              <span>
+                Status: {item.response.status} {item.response.statusText}
+              </span>
             </div>
-           <div>
+            <span>Time: {item.response.time}</span>
+            <span>Size: {item.response.size}</span>
+          </div>
+          <div>
             <h4 className="font-semibold mb-2">Body</h4>
-            <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm"><code className="font-code text-secondary-foreground">{item.response.body}</code></pre>
-           </div>
+            <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm">
+              <code className="font-code text-secondary-foreground">
+                {item.response.body}
+              </code>
+            </pre>
+          </div>
         </div>
       )}
     </div>
   );
 
-  return (
-    <div className="flex flex-col h-full gap-4">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-shrink-0">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row items-center gap-2">
-              <Select value={method} onValueChange={setMethod}>
-                <SelectTrigger className="w-full sm:w-[120px] font-bold">
-                  <SelectValue placeholder="Method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GET">GET</SelectItem>
-                  <SelectItem value="POST">POST</SelectItem>
-                  <SelectItem value="PUT">PUT</SelectItem>
-                  <SelectItem value="PATCH">PATCH</SelectItem>
-                  <SelectItem value="DELETE">DELETE</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                value={url}
-                onChange={e => setUrl(e.target.value)}
-                placeholder="https://api.example.com/v1/users"
-                className="text-base flex-1"
-              />
-              <Button onClick={handleSend} disabled={isLoading} size="lg" className="w-full sm:w-auto">
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isLoading ? 'Sending...' : 'Send'}
-              </Button>
-            </div>
-             <Tabs defaultValue="params" className="mt-4">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="params">Params</TabsTrigger>
-                <TabsTrigger value="auth">Authorization</TabsTrigger>
-                <TabsTrigger value="headers">Headers</TabsTrigger>
-                <TabsTrigger value="body">Body</TabsTrigger>
-              </TabsList>
-              <TabsContent value="params" className="mt-4">
-                <KeyValueTable
-                  data={queryParams}
-                  setter={setQueryParams}
-                  keyPlaceholder="page"
-                  valuePlaceholder="1"
-                />
-              </TabsContent>
-              <TabsContent value="auth" className="mt-4">
-                <div className="w-full md:w-1/2 space-y-4">
-                   <Select value={authMethod} onValueChange={setAuthMethod}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Auth Method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Auth</SelectItem>
-                        <SelectItem value="bearer">Bearer Token</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {authMethod === 'bearer' && (
-                      <Input 
-                        placeholder="Token"
-                        value={bearerToken}
-                        onChange={(e) => setBearerToken(e.target.value)}
-                        className="font-code"
-                      />
-                    )}
-                </div>
-              </TabsContent>
-              <TabsContent value="headers" className="mt-4">
-                <KeyValueTable
-                  data={headers}
-                  setter={setHeaders}
-                  keyPlaceholder="Authorization"
-                  valuePlaceholder="Bearer ..."
-                  isHeaders={true}
-                />
-              </TabsContent>
-              <TabsContent value="body" className="mt-4">
-                 <ScrollArea className="h-40 w-full">
-                  <Textarea
-                    placeholder='{ "key": "value" }'
-                    className="min-h-[150px] font-code"
-                    value={body}
-                    onChange={e => setBody(e.target.value)}
-                    disabled={method === 'GET' || method === 'HEAD'}
-                  />
-                </ScrollArea>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+  const LeftSidebar = () => (
+    <aside className="w-1/4 min-w-[250px] max-w-[350px] bg-card flex flex-col p-2 border-r">
+      <div className="flex items-center justify-between p-2">
+        <h2 className="text-lg font-semibold">My Workspace</h2>
+      </div>
+      <div className="flex items-center gap-2 p-2">
+        <Button variant="ghost" size="icon">
+          <Plus className="h-4 w-4" />
+        </Button>
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search collections" className="pl-8" />
+        </div>
+      </div>
+      <ScrollArea className="flex-1 mt-2">
+        <Accordion type="multiple" defaultValue={['item-1']} className="w-full">
+          <AccordionItem value="item-1">
+            <AccordionTrigger className="text-base font-semibold">
+              <div className="flex items-center gap-2">
+                <Folder className="h-5 w-5" />
+                <span>My first collection</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="flex flex-col gap-1 pl-4">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2"
+                >
+                  <span className="font-bold text-blue-400">GET</span>
+                  <span className="truncate">First folder inside collection</span>
+                </Button>
+                 <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2"
+                >
+                  <span className="font-bold text-green-400">POST</span>
+                   <span className="truncate">Second folder inside collection</span>
+                </Button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </ScrollArea>
+       <div className="p-4 mt-auto border-t">
+          <h3 className="font-semibold">Create a collection for your requests</h3>
+          <p className="text-sm text-muted-foreground mt-1">A collection lets you group related requests and easily set common authorization, tests, scripts, and variables for all requests in it.</p>
+          <Button className="w-full mt-4">Create Collection</Button>
+      </div>
+    </aside>
+  );
 
-        <div className="flex-grow overflow-auto min-h-[400px]">
-          {isLoading && (
-            <div className="flex items-center justify-center rounded-lg border h-full">
+  const RequestPanel = () => (
+     <div className="flex flex-col h-1/2 p-4">
+      <div className="flex items-center gap-2">
+        <Select value={method} onValueChange={setMethod}>
+          <SelectTrigger className="w-[120px] font-bold">
+            <SelectValue placeholder="Method" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="GET">GET</SelectItem>
+            <SelectItem value="POST">POST</SelectItem>
+            <SelectItem value="PUT">PUT</SelectItem>
+            <SelectItem value="PATCH">PATCH</SelectItem>
+            <SelectItem value="DELETE">DELETE</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          value={url}
+          onChange={e => setUrl(e.target.value)}
+          placeholder="https://api.example.com/v1/users"
+          className="text-base flex-1"
+        />
+        <Button onClick={handleSend} disabled={isLoading} size="lg">
+          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isLoading ? 'Sending...' : 'Send'}
+        </Button>
+      </div>
+      <Tabs defaultValue="params" className="mt-4 flex-1 flex flex-col">
+        <TabsList>
+          <TabsTrigger value="params">Params</TabsTrigger>
+          <TabsTrigger value="auth">Authorization</TabsTrigger>
+          <TabsTrigger value="headers">Headers</TabsTrigger>
+          <TabsTrigger value="body">Body</TabsTrigger>
+        </TabsList>
+        <TabsContent value="params" className="mt-4 flex-1">
+           <ScrollArea className="h-full">
+              <KeyValueTable
+                data={queryParams}
+                setter={setQueryParams}
+                keyPlaceholder="page"
+                valuePlaceholder="1"
+              />
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="auth" className="mt-4 flex-1">
+          <div className="w-full md:w-1/2 space-y-4 p-4">
+            <Select value={authMethod} onValueChange={setAuthMethod}>
+              <SelectTrigger>
+                <SelectValue placeholder="Auth Method" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Auth</SelectItem>
+                <SelectItem value="bearer">Bearer Token</SelectItem>
+              </SelectContent>
+            </Select>
+            {authMethod === 'bearer' && (
+              <Input
+                placeholder="Token"
+                value={bearerToken}
+                onChange={e => setBearerToken(e.target.value)}
+                className="font-code"
+              />
+            )}
+          </div>
+        </TabsContent>
+        <TabsContent value="headers" className="mt-4 flex-1">
+          <ScrollArea className="h-full">
+            <KeyValueTable
+              data={headers}
+              setter={setHeaders}
+              keyPlaceholder="Authorization"
+              valuePlaceholder="Bearer ..."
+              isHeaders={true}
+            />
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="body" className="mt-4 flex-1">
+          <Textarea
+            placeholder='{ "key": "value" }'
+            className="h-full font-code"
+            value={body}
+            onChange={e => setBody(e.target.value)}
+            disabled={method === 'GET' || method === 'HEAD'}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+
+  const ResponsePanel = () => (
+    <div className="flex flex-col h-1/2 border-t">
+       {isLoading && (
+            <div className="flex items-center justify-center h-full">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               <p className="text-muted-foreground">Loading response...</p>
             </div>
           )}
 
           {!isLoading && !response && (
-             <div className="flex items-center justify-center rounded-lg border h-full">
-              <p className="text-muted-foreground">Send a request to see the response</p>
+             <div className="flex flex-col items-center justify-center h-full text-center p-4">
+              <div className="w-40 h-40">
+                <svg className="w-full h-full text-muted-foreground/20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19.07,4.93C17.22,3.08 14.66,2 12,2S6.78,3.08 4.93,4.93C3.08,6.78 2,9.34 2,12s.08,5.22 4.93,7.07C6.78,20.92 9.34,22 12,22s5.22-.08 7.07-4.93c1.85-1.85 2.93-4.41 2.93-7.07s-1.08-5.22-2.93-7.07ZM12,20c-4.41,0-8-3.59-8-8s3.59-8 8-8 8,3.59 8,8-3.59,8-8,8Z" />
+                  <path d="M12.5,7h-1v6h1V7Zm-1,8h1v2h-1V15Z" />
+                  <path d="m15.54 13.5-1.06-1.06-1.06 1.06-1.41-1.41 1.06-1.06-1.06-1.06 1.41-1.41 1.06 1.06 1.06-1.06 1.41 1.41-1.06 1.06 1.06 1.06-1.41 1.41Z" />
+                  <path d="m9.52 13.52-1.41-1.41 1.06-1.06-1.06-1.06 1.41-1.41 1.06 1.06 1.06-1.06 1.41 1.41-1.06 1.06 1.06 1.06-1.41 1.41-1.06-1.06-1.06 1.06Z" />
+                </svg>
+              </div>
+              <p className="text-muted-foreground mt-4">Enter the URL and click Send to get a response</p>
             </div>
           )}
 
           {response && (
-            <Card className="h-full flex flex-col">
-              <CardHeader>
-                <CardTitle>Response</CardTitle>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+             <div className="h-full flex flex-col p-4">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm mb-2">
                   <div className="flex items-center gap-2">
                     <span
                       className={`h-2 w-2 rounded-full ${
@@ -598,131 +748,134 @@ export default function ApiPlaygroundPage() {
                   <span>Time: {response.time}</span>
                   <span>Size: {response.size}</span>
                 </div>
-              </CardHeader>
-              <CardContent className="flex-grow p-0 overflow-hidden">
-                <Tabs defaultValue="body" className="h-full flex flex-col">
-                  <div className="px-6">
-                    <TabsList>
-                      <TabsTrigger value="body">Body</TabsTrigger>
-                      <TabsTrigger value="headers">Headers</TabsTrigger>
-                      <TabsTrigger value="timing">Timing</TabsTrigger>
-                    </TabsList>
-                  </div>
-                  <TabsContent value="body" className="mt-4 flex-grow overflow-auto px-6 pb-6">
-                    <ScrollArea className="h-full">
-                      <pre className="w-full overflow-auto rounded-md bg-secondary p-4 text-sm">
-                        <code className="font-code text-secondary-foreground">
-                          {response.body}
-                        </code>
-                      </pre>
-                    </ScrollArea>
-                  </TabsContent>
-                  <TabsContent value="headers" className="mt-4 flex-grow overflow-auto px-6 pb-6">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Key</TableHead>
-                          <TableHead>Value</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(response.headers).map(
-                          ([key, value]: [
-                            string,
-                            string,
-                          ]) => (
-                            <TableRow key={key}>
-                              <TableCell className="font-medium">{key}</TableCell>
-                              <TableCell>{value}</TableCell>
-                            </TableRow>
-                          )
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TabsContent>
-                  <TabsContent value="timing" className="mt-4 flex-grow overflow-auto px-6 pb-6">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Phase</TableHead>
-                          <TableHead>Duration (ms)</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(response.timing).map(([phase, duration]) => (
+              <Tabs defaultValue="body" className="h-full flex flex-col flex-1">
+                  <TabsList>
+                    <TabsTrigger value="body">Body</TabsTrigger>
+                    <TabsTrigger value="headers">Headers</TabsTrigger>
+                    <TabsTrigger value="timing">Timing</TabsTrigger>
+                    <TabsTrigger value="history" onClick={() => {}}>History</TabsTrigger>
+                  </TabsList>
+                <TabsContent value="body" className="mt-4 flex-grow overflow-auto">
+                  <ScrollArea className="h-full">
+                    <pre className="w-full overflow-auto rounded-md bg-secondary p-4 text-sm">
+                      <code className="font-code text-secondary-foreground">
+                        {response.body}
+                      </code>
+                    </pre>
+                  </ScrollArea>
+                </TabsContent>
+                <TabsContent value="headers" className="mt-4 flex-grow overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Key</TableHead>
+                        <TableHead>Value</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(response.headers).map(
+                        ([key, value]: [string, string]) => (
+                          <TableRow key={key}>
+                            <TableCell className="font-medium">{key}</TableCell>
+                            <TableCell>{value}</TableCell>
+                          </TableRow>
+                        )
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+                <TabsContent value="timing" className="mt-4 flex-grow overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Phase</TableHead>
+                        <TableHead>Duration (ms)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(response.timing).map(
+                        ([phase, duration]) => (
                           <TableRow key={phase}>
-                            <TableCell className="font-medium">{phase}</TableCell>
+                            <TableCell className="font-medium">
+                              {phase}
+                            </TableCell>
                             <TableCell>{duration.toFixed(2)}</TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+                        )
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+                 <TabsContent value="history" className="mt-4 flex-grow overflow-auto">
+                   <Card>
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <CardDescription>A list of your 20 most recent API requests.</CardDescription>
+                        <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
+                      </CardHeader>
+                      <CardContent>
+                        {history.length > 0 ? (
+                          <ScrollArea className="h-48">
+                            <div className="space-y-1">
+                              {history.map(item => (
+                                <Dialog key={item.id}>
+                                  <DialogTrigger asChild>
+                                    <button className="w-full text-left p-2 rounded-md hover:bg-secondary">
+                                      <div className="flex justify-between items-center">
+                                        <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
+                                        <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
+                                      </div>
+                                      <p className="text-sm text-muted-foreground truncate">{item.url}</p>
+                                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
+                                    </button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-3xl">
+                                    <DialogHeader>
+                                      <DialogTitle>History Details</DialogTitle>
+                                      <CardDescription>
+                                        A detailed view of a request from {new Date(parseInt(item.id)).toLocaleString()}.
+                                        <Button size="sm" variant="outline" className="ml-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
+                                      </CardDescription>
+                                    </DialogHeader>
+                                    <ScrollArea className="max-h-[60vh]">
+                                      <div className="p-1">
+                                        <HistoryItemDetails item={item} />
+                                      </div>
+                                    </ScrollArea>
+                                  </DialogContent>
+                                </Dialog>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        ) : (
+                          <div className="h-full flex items-center justify-center p-8">
+                            <p className="text-muted-foreground text-sm">No history yet. Your requests will appear here.</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
           )}
-        </div>
-      </div>
-      
-      <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="history">
-          <AccordionTrigger>
-             <div className="flex items-center gap-2 text-lg font-semibold">
-                <History className="h-5 w-5"/>
-                <span>History</span>
-              </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <Card>
-               <CardHeader className="flex flex-row items-center justify-between">
-                <CardDescription>A list of your 20 most recent API requests.</CardDescription>
-                <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
-              </CardHeader>
-              <CardContent>
-                {history.length > 0 ? (
-                  <ScrollArea className="h-48">
-                    <div className="space-y-1">
-                      {history.map(item => (
-                        <Dialog key={item.id}>
-                          <DialogTrigger asChild>
-                            <button className="w-full text-left p-2 rounded-md hover:bg-secondary">
-                              <div className="flex justify-between items-center">
-                                <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
-                              </div>
-                              <p className="text-sm text-muted-foreground truncate">{item.url}</p>
-                              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
-                            </button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-3xl">
-                            <DialogHeader>
-                              <DialogTitle>History Details</DialogTitle>
-                              <CardDescription>
-                                A detailed view of a request from {new Date(parseInt(item.id)).toLocaleString()}.
-                                <Button size="sm" variant="outline" className="ml-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
-                              </CardDescription>
-                            </DialogHeader>
-                            <ScrollArea className="max-h-[60vh]">
-                              <div className="p-1">
-                                <HistoryItemDetails item={item} />
-                              </div>
-                            </ScrollArea>
-                          </DialogContent>
-                        </Dialog>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                ) : (
-                  <div className="h-full flex items-center justify-center p-8">
-                    <p className="text-muted-foreground text-sm">No history yet. Your requests will appear here.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+    </div>
+  );
+
+  const RightSidebar = () => (
+    <aside className="w-[50px] bg-card p-2 border-l flex flex-col items-center gap-4">
+      <Button variant="ghost" size="icon" title="Code Snippet">
+        <Code2 className="h-5 w-5" />
+      </Button>
+    </aside>
+  );
+
+  return (
+    <div className="flex h-[calc(100vh-3.5rem)] bg-background">
+      <LeftSidebar />
+      <main className="flex-1 flex flex-col">
+        <RequestPanel />
+        <ResponsePanel />
+      </main>
+      <RightSidebar />
     </div>
   );
 }
