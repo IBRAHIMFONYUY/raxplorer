@@ -114,6 +114,16 @@ export default function FlowBuilderPage() {
                   name="API Request"
                   description="Call any internal or external API."
                 />
+                 <ComponentLibraryItem
+                  icon={Mail}
+                  name="Send Email"
+                  description="Send an email via an API."
+                />
+                 <ComponentLibraryItem
+                  icon={Database}
+                  name="Database Query"
+                  description="Query a database."
+                />
               </div>
             </div>
             <div>
@@ -139,24 +149,36 @@ export default function FlowBuilderPage() {
         {/* Main Canvas */}
         <div className="relative rounded-lg border bg-card/50 p-8 overflow-auto">
           <div className="absolute inset-0 h-full w-full bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:2rem_2rem] [mask-image:radial-gradient(ellipse_at_center,white,transparent_75%)]"></div>
-          <div className="relative flex flex-col items-center">
-            <FlowNode
-              icon={Webhook}
-              title="Trigger: On User Signup"
-              content="Webhook received at /api/v1/users"
-            />
-            <ArrowConnector />
-            <FlowNode
-              icon={Zap}
-              title="API Call: Create User Record"
-              content="POST /users"
-            />
-            <ArrowConnector />
-            <FlowNode
-              icon={Mail}
-              title="API Call: Send Welcome Email"
-              content="POST /send-email"
-            />
+          <div className="relative w-full h-full flex items-center justify-center">
+            <div className="relative">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2">
+                    <FlowNode
+                    icon={Webhook}
+                    title="Trigger: On User Signup"
+                    content="Webhook received at /api/v1/users"
+                    />
+                </div>
+                <div className="absolute top-24 left-1/2 -translate-x-1/2">
+                    <ArrowConnector />
+                </div>
+                <div className="absolute top-48 left-1/2 -translate-x-1/2">
+                    <FlowNode
+                    icon={Zap}
+                    title="API Call: Create User Record"
+                    content="POST /users"
+                    />
+                </div>
+                <div className="absolute top-72 left-1/2 -translate-x-1/2">
+                    <ArrowConnector />
+                </div>
+                <div className="absolute top-96 left-1/2 -translate-x-1/2">
+                     <FlowNode
+                        icon={Mail}
+                        title="API Call: Send Welcome Email"
+                        content="POST /send-email"
+                        />
+                </div>
+            </div>
           </div>
           <div className="absolute bottom-4 right-4 flex items-center gap-2">
             <Button variant="outline" size="icon">
