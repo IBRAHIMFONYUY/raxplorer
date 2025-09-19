@@ -1,9 +1,12 @@
+'use client';
+
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
   CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import {
   Zap,
@@ -16,22 +19,34 @@ import {
   ZoomOut,
   Code,
   GitBranch,
+  Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import MockServerGenerator from '../mock-server/page';
 
 const FlowNode = ({
   icon: Icon,
   title,
   content,
+  children,
 }: {
   icon: React.ElementType;
   title: string;
   content: string;
+  children?: React.ReactNode;
 }) => (
-  <Card className="w-72 shadow-lg bg-card/80 backdrop-blur-sm border-primary/20 hover:border-primary/50 cursor-pointer transition-colors">
+  <Card className="w-72 shadow-lg bg-card/80 backdrop-blur-sm border-primary/20 hover:border-primary/50 transition-colors">
     <CardHeader className="flex flex-row items-center gap-4 space-y-0">
       <div className="p-3 rounded-lg bg-primary/10 text-primary">
         <Icon className="h-6 w-6" />
@@ -41,6 +56,7 @@ const FlowNode = ({
         <p className="text-sm text-muted-foreground">{content}</p>
       </div>
     </CardHeader>
+    {children && <CardFooter>{children}</CardFooter>}
   </Card>
 );
 
@@ -76,7 +92,7 @@ export default function FlowBuilderPage() {
           Visual API Flow Builder
         </h1>
         <p className="text-muted-foreground">
-          Design, automate, and visualize complex API workflows.
+          Design, automate, and visualize complex API workflows. This is a visual guide; full interactivity is coming soon.
         </p>
       </div>
       <div className="flex-1 grid grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr_320px] gap-4">
@@ -114,12 +130,12 @@ export default function FlowBuilderPage() {
                   name="API Request"
                   description="Call any internal or external API."
                 />
-                 <ComponentLibraryItem
+                <ComponentLibraryItem
                   icon={Mail}
                   name="Send Email"
                   description="Send an email via an API."
                 />
-                 <ComponentLibraryItem
+                <ComponentLibraryItem
                   icon={Database}
                   name="Database Query"
                   description="Query a database."
@@ -136,7 +152,7 @@ export default function FlowBuilderPage() {
                   name="Conditional"
                   description="Branch flow based on conditions."
                 />
-                 <ComponentLibraryItem
+                <ComponentLibraryItem
                   icon={Code}
                   name="Custom Script"
                   description="Run custom JavaScript/TypeScript."
@@ -157,11 +173,34 @@ export default function FlowBuilderPage() {
                 content="Webhook received at /api/v1/users"
               />
               <ArrowConnector />
-              <FlowNode
-                icon={Zap}
-                title="API Call: Create User Record"
-                content="POST /users"
-              />
+              <Dialog>
+                <DialogTrigger asChild>
+                  <div className="cursor-pointer">
+                    <FlowNode
+                      icon={Zap}
+                      title="API Call: Create User Record"
+                      content="POST /users"
+                    >
+                      <Button variant="outline" size="sm" className="w-full">
+                        <Wand2 className="mr-2 h-4 w-4" />
+                        Generate Mock Server
+                      </Button>
+                    </FlowNode>
+                  </div>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Mock Server Generator</DialogTitle>
+                    <DialogDescription>
+                      Generate a mock API from an OpenAPI spec or a natural
+                      language description based on this flow step.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <MockServerGenerator />
+                  </div>
+                </DialogContent>
+              </Dialog>
               <ArrowConnector />
               <FlowNode
                 icon={Mail}
@@ -174,7 +213,9 @@ export default function FlowBuilderPage() {
             <Button variant="outline" size="icon">
               <ZoomOut className="h-4 w-4" />
             </Button>
-            <span className="text-sm text-muted-foreground font-medium">100%</span>
+            <span className="text-sm text-muted-foreground font-medium">
+              100%
+            </span>
             <Button variant="outline" size="icon">
               <ZoomIn className="h-4 w-4" />
             </Button>
@@ -198,15 +239,23 @@ export default function FlowBuilderPage() {
             <div className="space-y-2">
               <Label>Webhook URL</Label>
               <div className="flex items-center rounded-md border bg-secondary">
-                 <span className="px-3 text-sm font-medium text-muted-foreground">POST</span>
-                 <Separator orientation="vertical" className="h-6" />
-                 <Input readOnly value="/api/v1/users" className="border-0 bg-transparent" />
+                <span className="px-3 text-sm font-medium text-muted-foreground">
+                  POST
+                </span>
+                <Separator orientation="vertical" className="h-6" />
+                <Input
+                  readOnly
+                  value="/api/v1/users"
+                  className="border-0 bg-transparent"
+                />
               </div>
-               <p className="text-xs text-muted-foreground">This is the endpoint that will trigger the flow.</p>
+              <p className="text-xs text-muted-foreground">
+                This is the endpoint that will trigger the flow.
+              </p>
             </div>
             <div className="space-y-2">
-               <Label>Authentication</Label>
-               <p className="text-sm text-muted-foreground">None</p>
+              <Label>Authentication</Label>
+              <p className="text-sm text-muted-foreground">None</p>
             </div>
           </CardContent>
         </Card>

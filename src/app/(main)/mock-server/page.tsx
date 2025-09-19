@@ -146,7 +146,7 @@ components:
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="h-full min-h-[400px] w-full overflow-auto rounded-lg bg-secondary p-4">
+          <pre className="h-full min-h-[400px] w-full overflow-auto rounded-lg bg-secondary p-4 whitespace-pre-wrap">
             <code className="font-code text-sm text-secondary-foreground">
               {state.data ? state.data : 'Awaiting generation...'}
             </code>
