@@ -11,10 +11,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Form,
   FormControl,
   FormItem,
   FormLabel,
   FormMessage,
+  FormField
 } from '@/components/ui/form';
 import { generateTestCasesAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
@@ -73,8 +75,6 @@ export default function AiTestingPage() {
     },
   });
 
-  const { formState: { errors }, getValues } = form;
-
 
   useEffect(() => {
     if (state.message && state.message !== 'Success') {
@@ -84,7 +84,16 @@ export default function AiTestingPage() {
         description: state.message,
       });
     }
-  }, [state, toast]);
+     if (state.errors) {
+       const fieldErrors = state.errors as { apiDefinition?: string[], dataModel?: string[] };
+       if (fieldErrors.apiDefinition?.[0]) {
+         form.setError('apiDefinition', { message: fieldErrors.apiDefinition[0] });
+       }
+       if (fieldErrors.dataModel?.[0]) {
+         form.setError('dataModel', { message: fieldErrors.dataModel[0] });
+       }
+    }
+  }, [state, toast, form]);
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -96,32 +105,43 @@ export default function AiTestingPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <Form {...form}>
             <form action={formAction} className="space-y-6">
-              <FormItem>
-                <FormLabel>API Definition</FormLabel>
-                <FormControl>
-                  <Textarea
-                    name="apiDefinition"
-                    className="min-h-[150px] font-code text-sm"
-                    placeholder="Paste your API definition here..."
-                    defaultValue={getValues('apiDefinition')}
-                  />
-                </FormControl>
-                {errors.apiDefinition && <FormMessage>{errors.apiDefinition.message}</FormMessage>}
-              </FormItem>
+              <FormField
+                control={form.control}
+                name="apiDefinition"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>API Definition</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        className="min-h-[150px] font-code text-sm"
+                        placeholder="Paste your API definition here..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
-              <FormItem>
-                <FormLabel>Data Model (Optional)</FormLabel>
-                <FormControl>
-                  <Textarea
-                    name="dataModel"
-                    className="min-h-[150px] font-code text-sm"
-                    placeholder="Paste the JSON schema for your data model..."
-                    defaultValue={getValues('dataModel')}
-                  />
-                </FormControl>
-                {errors.dataModel && <FormMessage>{errors.dataModel.message}</FormMessage>}
-              </FormItem>
+              <FormField
+                control={form.control}
+                name="dataModel"
+                render={({ field }) => (
+                   <FormItem>
+                    <FormLabel>Data Model (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        className="min-h-[150px] font-code text-sm"
+                        placeholder="Paste the JSON schema for your data model..."
+                         {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <input type="hidden" name="creativity" value={creativity} />
               
@@ -136,6 +156,7 @@ export default function AiTestingPage() {
                 )}
               </Button>
             </form>
+          </Form>
         </CardContent>
       </Card>
       <Card>

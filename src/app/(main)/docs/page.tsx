@@ -16,6 +16,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormField,
 } from '@/components/ui/form';
 import { generateDocsAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
@@ -56,8 +57,6 @@ Responses:
   - 404 Not Found: If the user with the specified ID does not exist.`,
     },
   });
-
-  const { control, formState: { errors } } = form;
   
   useEffect(() => {
     const storedCreativity = localStorage.getItem('aiCreativity');
@@ -74,7 +73,13 @@ Responses:
         description: state.message,
       });
     }
-  }, [state, toast]);
+    if (state.errors) {
+       const fieldErrors = state.errors as { prompt?: string[] };
+       if (fieldErrors.prompt?.[0]) {
+         form.setError('prompt', { message: fieldErrors.prompt[0] });
+       }
+    }
+  }, [state, toast, form]);
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -87,22 +92,28 @@ Responses:
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <Form {...form}>
             <form
               action={formAction}
               className="space-y-6"
             >
-              <FormItem>
-                <FormLabel>Endpoint Definition</FormLabel>
-                <FormControl>
-                  <Textarea
-                    name="prompt"
-                    className="min-h-[300px] font-code text-sm"
-                    placeholder="Paste your endpoint definition here..."
-                    defaultValue={form.getValues('prompt')}
-                  />
-                </FormControl>
-                {errors.prompt && <FormMessage>{errors.prompt.message}</FormMessage>}
-              </FormItem>
+              <FormField
+                control={form.control}
+                name="prompt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Endpoint Definition</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        className="min-h-[300px] font-code text-sm"
+                        placeholder="Paste your endpoint definition here..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <input type="hidden" name="creativity" value={creativity} />
               <Button type="submit" disabled={isPending}>
                 {isPending ? (
@@ -115,6 +126,7 @@ Responses:
                 )}
               </Button>
             </form>
+          </Form>
         </CardContent>
       </Card>
       <Card>

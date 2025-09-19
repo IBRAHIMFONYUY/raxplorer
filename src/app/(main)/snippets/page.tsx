@@ -14,10 +14,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Form,
   FormControl,
   FormItem,
   FormLabel,
   FormMessage,
+  FormField,
 } from '@/components/ui/form';
 import {
   Select,
@@ -58,9 +60,6 @@ export default function CodeSnippetsPage() {
       language: 'JavaScript',
     },
   });
-  
-  const { formState: {errors}, getValues, setValue, watch } = form;
-  const watchedLanguage = watch('language');
 
   useEffect(() => {
     const storedCreativity = localStorage.getItem('aiCreativity');
@@ -69,9 +68,9 @@ export default function CodeSnippetsPage() {
     }
     const storedSnippetLang = localStorage.getItem('snippetLanguage') as z.infer<typeof formSchema>['language'] | null;
     if (storedSnippetLang) {
-      setValue('language', storedSnippetLang);
+      form.setValue('language', storedSnippetLang);
     }
-  }, [setValue]);
+  }, [form]);
 
 
   useEffect(() => {
@@ -82,7 +81,16 @@ export default function CodeSnippetsPage() {
         description: state.message,
       });
     }
-  }, [state, toast]);
+    if (state.errors) {
+       const fieldErrors = state.errors as { prompt?: string[], language?: string[] };
+       if (fieldErrors.prompt?.[0]) {
+         form.setError('prompt', { message: fieldErrors.prompt[0] });
+       }
+       if (fieldErrors.language?.[0]) {
+         form.setError('language', { message: fieldErrors.language[0] });
+       }
+    }
+  }, [state, toast, form]);
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -94,48 +102,56 @@ export default function CodeSnippetsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <Form {...form}>
             <form
               action={formAction}
               className="space-y-6"
             >
-              <FormItem>
-                <FormLabel>Endpoint Definition</FormLabel>
-                <FormControl>
-                  <Textarea
-                    name="prompt"
-                    className="min-h-[200px] font-code text-sm"
-                    placeholder="e.g., A POST request to /login with email and password in the body."
-                    defaultValue={getValues('prompt')}
-                  />
-                </FormControl>
-                {errors.prompt && <FormMessage>{errors.prompt.message}</FormMessage>}
-              </FormItem>
+              <FormField
+                control={form.control}
+                name="prompt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Endpoint Definition</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        className="min-h-[200px] font-code text-sm"
+                        placeholder="e.g., A POST request to /login with email and password in the body."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
-              <FormItem>
-                <FormLabel>Language</FormLabel>
-                <Select
-                  name="language"
-                  defaultValue={getValues('language')}
-                  onValueChange={(value: z.infer<typeof formSchema>['language']) => setValue('language', value)}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a language" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="JavaScript">JavaScript</SelectItem>
-                    <SelectItem value="TypeScript">TypeScript</SelectItem>
-                    <SelectItem value="Node.js">Node.js</SelectItem>
-                    <SelectItem value="Python">Python</SelectItem>
-                    <SelectItem value="Go">Go</SelectItem>
-                    <SelectItem value="Java">Java</SelectItem>
-                    <SelectItem value="C#">C#</SelectItem>
-                    <SelectItem value="Ruby">Ruby</SelectItem>
-                  </SelectContent>
-                </Select>
-                 {errors.language && <FormMessage>{errors.language.message}</FormMessage>}
-              </FormItem>
+              <FormField
+                control={form.control}
+                name="language"
+                render={({ field }) => (
+                   <FormItem>
+                    <FormLabel>Language</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a language" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="JavaScript">JavaScript</SelectItem>
+                        <SelectItem value="TypeScript">TypeScript</SelectItem>
+                        <SelectItem value="Node.js">Node.js</SelectItem>
+                        <SelectItem value="Python">Python</SelectItem>
+                        <SelectItem value="Go">Go</SelectItem>
+                        <SelectItem value="Java">Java</SelectItem>
+                        <SelectItem value="C#">C#</SelectItem>
+                        <SelectItem value="Ruby">Ruby</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <input type="hidden" name="creativity" value={creativity} />
 
@@ -150,6 +166,7 @@ export default function CodeSnippetsPage() {
                 )}
               </Button>
             </form>
+          </Form>
         </CardContent>
       </Card>
       <Card>

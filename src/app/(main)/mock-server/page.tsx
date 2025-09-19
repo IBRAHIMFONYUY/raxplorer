@@ -16,6 +16,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormField,
 } from '@/components/ui/form';
 import { generateMockServerAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
@@ -85,8 +86,6 @@ components:
     },
   });
 
-  const { formState: { errors } } = form;
-
   useEffect(() => {
     if (state.message && state.message !== 'Success') {
       toast({
@@ -95,7 +94,13 @@ components:
         description: state.message,
       });
     }
-  }, [state, toast]);
+    if (state.errors) {
+       const fieldErrors = state.errors as { prompt?: string[] };
+       if (fieldErrors.prompt?.[0]) {
+         form.setError('prompt', { message: fieldErrors.prompt[0] });
+       }
+    }
+  }, [state, toast, form]);
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -108,19 +113,25 @@ components:
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <Form {...form}>
             <form action={formAction} className="space-y-6">
-              <FormItem>
-                <FormLabel>API Specification or Description</FormLabel>
-                <FormControl>
-                  <Textarea
-                    name="prompt"
-                    className="min-h-[300px] font-code text-sm"
-                    placeholder="e.g., An API for managing a list of tasks with GET, POST, and DELETE endpoints."
-                    defaultValue={form.getValues('prompt')}
-                  />
-                </FormControl>
-                {errors.prompt && <FormMessage>{errors.prompt.message}</FormMessage>}
-              </FormItem>
+              <FormField
+                control={form.control}
+                name="prompt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>API Specification or Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        className="min-h-[300px] font-code text-sm"
+                        placeholder="e.g., An API for managing a list of tasks with GET, POST, and DELETE endpoints."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
                <input type="hidden" name="creativity" value={creativity} />
               <Button type="submit" disabled={isPending}>
                 {isPending ? (
@@ -133,6 +144,7 @@ components:
                 )}
               </Button>
             </form>
+          </Form>
         </CardContent>
       </Card>
       <Card>
