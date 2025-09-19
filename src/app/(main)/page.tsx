@@ -26,18 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useState, useEffect, useRef } from 'react';
-import {
-  Clock,
-  History,
-  Loader2,
-  Trash2,
-  Book,
-  Folder,
-  Plus,
-  Search,
-  Code2,
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Clock, History, Loader2, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -104,7 +94,6 @@ export default function ApiPlaygroundPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [headerSuggestions, setHeaderSuggestions] = useState<string[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
-  const suggestionBoxRef = useRef<HTMLUListElement>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [authMethod, setAuthMethod] = useState('none');
   const [bearerToken, setBearerToken] = useState('');
@@ -165,7 +154,7 @@ export default function ApiPlaygroundPage() {
           requestHeaders.append(header.key, header.value);
         }
       });
-
+      
       if (authMethod === 'bearer' && bearerToken) {
         requestHeaders.set('Authorization', `Bearer ${bearerToken}`);
       }
@@ -365,14 +354,6 @@ export default function ApiPlaygroundPage() {
     }
   };
 
-  useEffect(() => {
-    if (activeSuggestionIndex !== -1 && suggestionBoxRef.current) {
-      const activeItem =
-        suggestionBoxRef.current.children[activeSuggestionIndex];
-      activeItem?.scrollIntoView({ block: 'nearest' });
-    }
-  }, [activeSuggestionIndex]);
-
   const KeyValueTable = ({
     data,
     setter,
@@ -411,7 +392,6 @@ export default function ApiPlaygroundPage() {
                 />
                 {isHeaders && headerSuggestions.length > 0 && (
                   <ul
-                    ref={suggestionBoxRef}
                     className="absolute z-10 w-full mt-1 bg-card border rounded-md shadow-lg max-h-40 overflow-y-auto"
                   >
                     {headerSuggestions.map((suggestion, sIndex) => (
@@ -567,196 +547,141 @@ export default function ApiPlaygroundPage() {
     </div>
   );
 
-  const LeftSidebar = () => (
-    <aside className="w-1/4 min-w-[250px] max-w-[350px] bg-card flex flex-col p-2 border-r">
-      <div className="flex items-center justify-between p-2">
-        <h2 className="text-lg font-semibold">My Workspace</h2>
-      </div>
-      <div className="flex items-center gap-2 p-2">
-        <Button variant="ghost" size="icon">
-          <Plus className="h-4 w-4" />
-        </Button>
-        <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search collections" className="pl-8" />
-        </div>
-      </div>
-      <ScrollArea className="flex-1 mt-2">
-        <Accordion type="multiple" defaultValue={['item-1']} className="w-full">
-          <AccordionItem value="item-1">
-            <AccordionTrigger className="text-base font-semibold">
-              <div className="flex items-center gap-2">
-                <Folder className="h-5 w-5" />
-                <span>My first collection</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="flex flex-col gap-1 pl-4">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-2"
-                >
-                  <span className="font-bold text-blue-400">GET</span>
-                  <span className="truncate">First folder inside collection</span>
-                </Button>
-                 <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-2"
-                >
-                  <span className="font-bold text-green-400">POST</span>
-                   <span className="truncate">Second folder inside collection</span>
-                </Button>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </ScrollArea>
-       <div className="p-4 mt-auto border-t">
-          <h3 className="font-semibold">Create a collection for your requests</h3>
-          <p className="text-sm text-muted-foreground mt-1">A collection lets you group related requests and easily set common authorization, tests, scripts, and variables for all requests in it.</p>
-          <Button className="w-full mt-4">Create Collection</Button>
-      </div>
-    </aside>
-  );
-
-  const RequestPanel = () => (
-     <div className="flex flex-col h-1/2 p-4">
-      <div className="flex items-center gap-2">
-        <Select value={method} onValueChange={setMethod}>
-          <SelectTrigger className="w-[120px] font-bold">
-            <SelectValue placeholder="Method" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="GET">GET</SelectItem>
-            <SelectItem value="POST">POST</SelectItem>
-            <SelectItem value="PUT">PUT</SelectItem>
-            <SelectItem value="PATCH">PATCH</SelectItem>
-            <SelectItem value="DELETE">DELETE</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          value={url}
-          onChange={e => setUrl(e.target.value)}
-          placeholder="https://api.example.com/v1/users"
-          className="text-base flex-1"
-        />
-        <Button onClick={handleSend} disabled={isLoading} size="lg">
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isLoading ? 'Sending...' : 'Send'}
-        </Button>
-      </div>
-      <Tabs defaultValue="params" className="mt-4 flex-1 flex flex-col">
-        <TabsList>
-          <TabsTrigger value="params">Params</TabsTrigger>
-          <TabsTrigger value="auth">Authorization</TabsTrigger>
-          <TabsTrigger value="headers">Headers</TabsTrigger>
-          <TabsTrigger value="body">Body</TabsTrigger>
-        </TabsList>
-        <TabsContent value="params" className="mt-4 flex-1">
-           <ScrollArea className="h-full">
-              <KeyValueTable
-                data={queryParams}
-                setter={setQueryParams}
-                keyPlaceholder="page"
-                valuePlaceholder="1"
-              />
-          </ScrollArea>
-        </TabsContent>
-        <TabsContent value="auth" className="mt-4 flex-1">
-          <div className="w-full md:w-1/2 space-y-4 p-4">
-            <Select value={authMethod} onValueChange={setAuthMethod}>
-              <SelectTrigger>
-                <SelectValue placeholder="Auth Method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No Auth</SelectItem>
-                <SelectItem value="bearer">Bearer Token</SelectItem>
-              </SelectContent>
-            </Select>
-            {authMethod === 'bearer' && (
+  return (
+    <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-5rem)]">
+      <div className="flex flex-col w-full md:w-2/3 space-y-4">
+        <Card className="flex-1">
+          <CardHeader>
+            <CardTitle>Request</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 mb-4">
+              <Select value={method} onValueChange={setMethod}>
+                <SelectTrigger className="w-[120px] font-bold">
+                  <SelectValue placeholder="Method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                  <SelectItem value="PUT">PUT</SelectItem>
+                  <SelectItem value="PATCH">PATCH</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                </SelectContent>
+              </Select>
               <Input
-                placeholder="Token"
-                value={bearerToken}
-                onChange={e => setBearerToken(e.target.value)}
-                className="font-code"
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+                placeholder="https://api.example.com/v1/users"
+                className="text-base flex-1"
               />
-            )}
-          </div>
-        </TabsContent>
-        <TabsContent value="headers" className="mt-4 flex-1">
-          <ScrollArea className="h-full">
-            <KeyValueTable
-              data={headers}
-              setter={setHeaders}
-              keyPlaceholder="Authorization"
-              valuePlaceholder="Bearer ..."
-              isHeaders={true}
-            />
-          </ScrollArea>
-        </TabsContent>
-        <TabsContent value="body" className="mt-4 flex-1">
-          <Textarea
-            placeholder='{ "key": "value" }'
-            className="h-full font-code"
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            disabled={method === 'GET' || method === 'HEAD'}
-          />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-
-  const ResponsePanel = () => (
-    <div className="flex flex-col h-1/2 border-t">
-       {isLoading && (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              <p className="text-muted-foreground">Loading response...</p>
+              <Button onClick={handleSend} disabled={isLoading}>
+                {isLoading && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {isLoading ? 'Sending...' : 'Send'}
+              </Button>
             </div>
-          )}
-
-          {!isLoading && !response && (
-             <div className="flex flex-col items-center justify-center h-full text-center p-4">
-              <div className="w-40 h-40">
-                <svg className="w-full h-full text-muted-foreground/20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M19.07,4.93C17.22,3.08 14.66,2 12,2S6.78,3.08 4.93,4.93C3.08,6.78 2,9.34 2,12s.08,5.22 4.93,7.07C6.78,20.92 9.34,22 12,22s5.22-.08 7.07-4.93c1.85-1.85 2.93-4.41 2.93-7.07s-1.08-5.22-2.93-7.07ZM12,20c-4.41,0-8-3.59-8-8s3.59-8 8-8 8,3.59 8,8-3.59,8-8,8Z" />
-                  <path d="M12.5,7h-1v6h1V7Zm-1,8h1v2h-1V15Z" />
-                  <path d="m15.54 13.5-1.06-1.06-1.06 1.06-1.41-1.41 1.06-1.06-1.06-1.06 1.41-1.41 1.06 1.06 1.06-1.06 1.41 1.41-1.06 1.06 1.06 1.06-1.41 1.41Z" />
-                  <path d="m9.52 13.52-1.41-1.41 1.06-1.06-1.06-1.06 1.41-1.41 1.06 1.06 1.06-1.06 1.41 1.41-1.06 1.06 1.06 1.06-1.41 1.41-1.06-1.06-1.06 1.06Z" />
-                </svg>
-              </div>
-              <p className="text-muted-foreground mt-4">Enter the URL and click Send to get a response</p>
-            </div>
-          )}
-
-          {response && (
-             <div className="h-full flex flex-col p-4">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm mb-2">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        response.status >= 200 && response.status < 300
-                          ? 'bg-green-500'
-                          : 'bg-red-500'
-                      }`}
-                    ></span>
-                    <span>
-                      Status: {response.status} {response.statusText}
-                    </span>
-                  </div>
-                  <span>Time: {response.time}</span>
-                  <span>Size: {response.size}</span>
+            <Tabs defaultValue="params" className="w-full">
+              <TabsList>
+                <TabsTrigger value="params">Params</TabsTrigger>
+                <TabsTrigger value="auth">Authorization</TabsTrigger>
+                <TabsTrigger value="headers">Headers</TabsTrigger>
+                <TabsTrigger value="body">Body</TabsTrigger>
+              </TabsList>
+              <TabsContent value="params" className="mt-4">
+                <KeyValueTable
+                  data={queryParams}
+                  setter={setQueryParams}
+                  keyPlaceholder="page"
+                  valuePlaceholder="1"
+                />
+              </TabsContent>
+              <TabsContent value="auth" className="mt-4">
+                <div className="w-full md:w-1/2 space-y-4">
+                  <Select value={authMethod} onValueChange={setAuthMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Auth Method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Auth</SelectItem>
+                      <SelectItem value="bearer">Bearer Token</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {authMethod === 'bearer' && (
+                    <Input
+                      placeholder="Token"
+                      value={bearerToken}
+                      onChange={e => setBearerToken(e.target.value)}
+                      className="font-code"
+                    />
+                  )}
                 </div>
-              <Tabs defaultValue="body" className="h-full flex flex-col flex-1">
-                  <TabsList>
-                    <TabsTrigger value="body">Body</TabsTrigger>
-                    <TabsTrigger value="headers">Headers</TabsTrigger>
-                    <TabsTrigger value="timing">Timing</TabsTrigger>
-                    <TabsTrigger value="history" onClick={() => {}}>History</TabsTrigger>
-                  </TabsList>
-                <TabsContent value="body" className="mt-4 flex-grow overflow-auto">
-                  <ScrollArea className="h-full">
+              </TabsContent>
+              <TabsContent value="headers" className="mt-4">
+                <KeyValueTable
+                  data={headers}
+                  setter={setHeaders}
+                  keyPlaceholder="Authorization"
+                  valuePlaceholder="Bearer ..."
+                  isHeaders={true}
+                />
+              </TabsContent>
+              <TabsContent value="body" className="mt-4">
+                <Textarea
+                  placeholder='{ "key": "value" }'
+                  className="h-40 font-code"
+                  value={body}
+                  onChange={e => setBody(e.target.value)}
+                  disabled={method === 'GET' || method === 'HEAD'}
+                />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        <Card className="flex-1">
+          <CardHeader>
+            <CardTitle>Response</CardTitle>
+            {response && (
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      response.status >= 200 && response.status < 300
+                        ? 'bg-green-500'
+                        : 'bg-red-500'
+                    }`}
+                  ></span>
+                  <span>
+                    Status: {response.status} {response.statusText}
+                  </span>
+                </div>
+                <span>Time: {response.time}</span>
+                <span>Size: {response.size}</span>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            {isLoading && (
+              <div className="flex items-center justify-center h-48">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <p>Loading response...</p>
+              </div>
+            )}
+            {!isLoading && !response && (
+              <div className="h-48 flex items-center justify-center text-muted-foreground">
+                <p>Click "Send" to get a response</p>
+              </div>
+            )}
+            {response && (
+              <Tabs defaultValue="body" className="w-full">
+                <TabsList>
+                  <TabsTrigger value="body">Body</TabsTrigger>
+                  <TabsTrigger value="headers">Headers</TabsTrigger>
+                  <TabsTrigger value="timing">Timing</TabsTrigger>
+                </TabsList>
+                <TabsContent value="body" className="mt-4">
+                  <ScrollArea className="h-48">
                     <pre className="w-full overflow-auto rounded-md bg-secondary p-4 text-sm">
                       <code className="font-code text-secondary-foreground">
                         {response.body}
@@ -764,7 +689,7 @@ export default function ApiPlaygroundPage() {
                     </pre>
                   </ScrollArea>
                 </TabsContent>
-                <TabsContent value="headers" className="mt-4 flex-grow overflow-auto">
+                <TabsContent value="headers" className="mt-4">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -784,7 +709,7 @@ export default function ApiPlaygroundPage() {
                     </TableBody>
                   </Table>
                 </TabsContent>
-                <TabsContent value="timing" className="mt-4 flex-grow overflow-auto">
+                <TabsContent value="timing" className="mt-4">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -806,76 +731,70 @@ export default function ApiPlaygroundPage() {
                     </TableBody>
                   </Table>
                 </TabsContent>
-                 <TabsContent value="history" className="mt-4 flex-grow overflow-auto">
-                   <Card>
-                      <CardHeader className="flex flex-row items-center justify-between">
-                        <CardDescription>A list of your 20 most recent API requests.</CardDescription>
-                        <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
-                      </CardHeader>
-                      <CardContent>
-                        {history.length > 0 ? (
-                          <ScrollArea className="h-48">
-                            <div className="space-y-1">
-                              {history.map(item => (
-                                <Dialog key={item.id}>
-                                  <DialogTrigger asChild>
-                                    <button className="w-full text-left p-2 rounded-md hover:bg-secondary">
-                                      <div className="flex justify-between items-center">
-                                        <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
-                                        <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
-                                      </div>
-                                      <p className="text-sm text-muted-foreground truncate">{item.url}</p>
-                                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
-                                    </button>
-                                  </DialogTrigger>
-                                  <DialogContent className="max-w-3xl">
-                                    <DialogHeader>
-                                      <DialogTitle>History Details</DialogTitle>
-                                      <CardDescription>
-                                        A detailed view of a request from {new Date(parseInt(item.id)).toLocaleString()}.
-                                        <Button size="sm" variant="outline" className="ml-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
-                                      </CardDescription>
-                                    </DialogHeader>
-                                    <ScrollArea className="max-h-[60vh]">
-                                      <div className="p-1">
-                                        <HistoryItemDetails item={item} />
-                                      </div>
-                                    </ScrollArea>
-                                  </DialogContent>
-                                </Dialog>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        ) : (
-                          <div className="h-full flex items-center justify-center p-8">
-                            <p className="text-muted-foreground text-sm">No history yet. Your requests will appear here.</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                </TabsContent>
               </Tabs>
-            </div>
-          )}
-    </div>
-  );
-
-  const RightSidebar = () => (
-    <aside className="w-[50px] bg-card p-2 border-l flex flex-col items-center gap-4">
-      <Button variant="ghost" size="icon" title="Code Snippet">
-        <Code2 className="h-5 w-5" />
-      </Button>
-    </aside>
-  );
-
-  return (
-    <div className="flex h-[calc(100vh-3.5rem)] bg-background">
-      <LeftSidebar />
-      <main className="flex-1 flex flex-col">
-        <RequestPanel />
-        <ResponsePanel />
-      </main>
-      <RightSidebar />
+            )}
+          </CardContent>
+        </Card>
+        
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="history">
+            <AccordionTrigger>
+              <div className="flex items-center gap-2 text-lg font-semibold">
+                <History className="h-5 w-5" />
+                Request History
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardDescription>A list of your 20 most recent API requests.</CardDescription>
+                  <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
+                </CardHeader>
+                <CardContent>
+                  {history.length > 0 ? (
+                    <ScrollArea className="h-48">
+                      <div className="space-y-1">
+                        {history.map(item => (
+                          <Dialog key={item.id}>
+                            <DialogTrigger asChild>
+                              <button className="w-full text-left p-2 rounded-md hover:bg-secondary">
+                                <div className="flex justify-between items-center">
+                                  <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
+                                </div>
+                                <p className="text-sm text-muted-foreground truncate">{item.url}</p>
+                                <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-3xl">
+                              <DialogHeader>
+                                <DialogTitle>History Details</DialogTitle>
+                                <CardDescription>
+                                  A detailed view of a request from {new Date(parseInt(item.id)).toLocaleString()}.
+                                  <Button size="sm" variant="outline" className="ml-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
+                                </CardDescription>
+                              </DialogHeader>
+                              <ScrollArea className="max-h-[60vh]">
+                                <div className="p-1">
+                                  <HistoryItemDetails item={item} />
+                                </div>
+                              </ScrollArea>
+                            </DialogContent>
+                          </Dialog>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <div className="h-full flex items-center justify-center p-8">
+                      <p className="text-muted-foreground text-sm">No history yet. Your requests will appear here.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
     </div>
   );
 }
