@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 
 type SettingsModalProps = {
   open: boolean;
@@ -31,6 +33,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [theme, setTheme] = useState<Theme>('dark');
   const [uiLanguage, setUiLanguage] = useState<Language>('en');
   const [snippetLanguage, setSnippetLanguage] = useState<SnippetLanguage>('Node.js');
+  const [bearerToken, setBearerToken] = useState('');
+  const [creativity, setCreativity] = useState([0.5]);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -48,6 +52,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
     const storedSnippetLang = localStorage.getItem('snippetLanguage') as SnippetLanguage | null;
     if (storedSnippetLang) setSnippetLanguage(storedSnippetLang);
+    
+    const storedBearerToken = localStorage.getItem('bearerToken');
+    if (storedBearerToken) setBearerToken(storedBearerToken);
+    
+    const storedCreativity = localStorage.getItem('aiCreativity');
+    if (storedCreativity) setCreativity([parseFloat(storedCreativity)]);
+
   }, []);
 
   useEffect(() => {
@@ -70,6 +81,19 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       localStorage.setItem('snippetLanguage', snippetLanguage);
     }
   }, [snippetLanguage, isMounted]);
+  
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem('bearerToken', bearerToken);
+    }
+  }, [bearerToken, isMounted]);
+
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem('aiCreativity', creativity[0].toString());
+    }
+  }, [creativity, isMounted]);
+
 
   if (!isMounted) {
     return null; // Don't render on the server
@@ -84,7 +108,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             Customize the look, feel, and behavior of the application.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-8">
+        <div className="py-4 space-y-8 max-h-[70vh] overflow-y-auto pr-4">
           {/* General Settings */}
           <div>
             <h3 className="text-lg font-semibold mb-4">General</h3>
@@ -111,11 +135,44 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           </div>
           
           <Separator />
+          
+           {/* API & Network Settings */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">API & Network</h3>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="auth-vault-bearer" className="flex flex-col space-y-1">
+                  <span>Authentication Vault</span>
+                   <span className="text-xs font-normal text-muted-foreground">Securely store API keys and tokens.</span>
+                </Label>
+                 <Input
+                  id="auth-vault-bearer"
+                  type="password"
+                  value={bearerToken}
+                  onChange={(e) => setBearerToken(e.target.value)}
+                  placeholder="Bearer Token"
+                  className="w-[180px]"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
 
           {/* AI Settings */}
           <div>
             <h3 className="text-lg font-semibold mb-4">AI & Code Generation</h3>
             <div className="space-y-6">
+               <div className="flex items-center justify-between">
+                <Label htmlFor="creativity-slider" className="flex flex-col space-y-1">
+                  <span>AI Creativity Level</span>
+                   <span className="text-xs font-normal text-muted-foreground">Controls the randomness of the AI's responses.</span>
+                </Label>
+                <div className="w-[180px] flex items-center gap-2">
+                  <Slider id="creativity-slider" value={creativity} onValueChange={setCreativity} max={1} step={0.1} />
+                  <span className="text-sm font-medium w-8 text-right">{creativity[0].toFixed(1)}</span>
+                </div>
+              </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="snippet-lang-select" className="flex flex-col space-y-1">
                   <span>Default Snippet Language</span>
