@@ -564,7 +564,7 @@ export default function ApiPlaygroundPage() {
       {item.body && (
         <div>
           <h4 className="font-semibold mb-2">Body</h4>
-          <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm">
+          <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm whitespace-pre-wrap break-all">
             <code className="font-code text-secondary-foreground">
               {item.body}
             </code>
@@ -593,7 +593,7 @@ export default function ApiPlaygroundPage() {
           </div>
           <div>
             <h4 className="font-semibold mb-2">Body</h4>
-            <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm">
+            <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm whitespace-pre-wrap break-all">
               <code className="font-code text-secondary-foreground">
                 {item.response.body}
               </code>
@@ -767,7 +767,7 @@ export default function ApiPlaygroundPage() {
               </TabsList>
               <TabsContent value="body" className="mt-4">
                 <ScrollArea className="h-48">
-                  <pre className="w-full overflow-auto rounded-md bg-secondary p-4 text-sm">
+                  <pre className="w-full overflow-auto rounded-md bg-secondary p-4 text-sm whitespace-pre-wrap break-all">
                     <code className="font-code text-secondary-foreground">
                       {response.body}
                     </code>
