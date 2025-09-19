@@ -60,6 +60,8 @@ export default function CodeSnippetsPage() {
       language: 'JavaScript',
     },
   });
+  
+  const selectedLanguage = form.watch('language');
 
   useEffect(() => {
     const storedCreativity = localStorage.getItem('aiCreativity');
@@ -154,6 +156,7 @@ export default function CodeSnippetsPage() {
               />
               
               <input type="hidden" name="creativity" value={creativity} />
+              <input type="hidden" name="language" value={selectedLanguage} />
 
               <Button type="submit" disabled={isPending}>
                 {isPending ? (
