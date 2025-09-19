@@ -18,6 +18,7 @@ const CodeSnippetInputSchema = z.object({
   language: z
     .enum(['JavaScript', 'TypeScript', 'Node.js', 'Python', 'Go', 'Java', 'C#', 'Ruby'])
     .describe('The programming language for which to generate the code snippet.'),
+  creativity: z.number().optional().describe('The creativity level for the AI. A value between 0 and 1.')
 });
 export type CodeSnippetInput = z.infer<typeof CodeSnippetInputSchema>;
 
@@ -56,7 +57,7 @@ const generateCodeSnippetFlow = ai.defineFlow(
     outputSchema: CodeSnippetOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input, { config: { temperature: input.creativity } });
     return output!;
   }
 );

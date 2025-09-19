@@ -90,7 +90,8 @@ const initialChallenges = [
 
 async function generateChallengeAction() {
     try {
-        const result = await generateChallenge();
+        const creativity = parseFloat(localStorage.getItem('aiCreativity') || '0.5');
+        const result = await generateChallenge({ creativity });
         return { message: 'Success', data: result };
     } catch (error) {
         console.error(error);

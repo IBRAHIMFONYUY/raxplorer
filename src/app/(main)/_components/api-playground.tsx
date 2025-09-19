@@ -91,7 +91,8 @@ async function generateRequestAction(currentState: any, formData: FormData) {
     if (!prompt) return { message: 'Prompt is empty' };
 
     try {
-        const result = await generateRequestFromPrompt({ prompt });
+        const creativity = parseFloat(localStorage.getItem('aiCreativity') || '0.5');
+        const result = await generateRequestFromPrompt({ prompt, creativity });
         return { message: 'Success', data: result };
     } catch (error) {
         console.error(error);

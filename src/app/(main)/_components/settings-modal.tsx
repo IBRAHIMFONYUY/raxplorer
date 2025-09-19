@@ -26,13 +26,11 @@ type SettingsModalProps = {
 };
 
 type Theme = 'light' | 'dark';
-type Language = 'en' | 'es' | 'fr';
-type SnippetLanguage = 'Node.js' | 'Python' | 'Go';
+type SnippetLanguage = 'JavaScript' | 'TypeScript' | 'Node.js' | 'Python' | 'Go' | 'Java' | 'C#' | 'Ruby';
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [theme, setTheme] = useState<Theme>('dark');
-  const [uiLanguage, setUiLanguage] = useState<Language>('en');
-  const [snippetLanguage, setSnippetLanguage] = useState<SnippetLanguage>('Node.js');
+  const [snippetLanguage, setSnippetLanguage] = useState<SnippetLanguage>('JavaScript');
   const [bearerToken, setBearerToken] = useState('');
   const [creativity, setCreativity] = useState([0.5]);
   const [isMounted, setIsMounted] = useState(false);
@@ -46,9 +44,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       setTheme(prefersDark ? 'dark' : 'light');
     }
-
-    const storedUiLang = localStorage.getItem('uiLanguage') as Language | null;
-    if (storedUiLang) setUiLanguage(storedUiLang);
 
     const storedSnippetLang = localStorage.getItem('snippetLanguage') as SnippetLanguage | null;
     if (storedSnippetLang) setSnippetLanguage(storedSnippetLang);
@@ -69,12 +64,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       localStorage.setItem('theme', theme);
     }
   }, [theme, isMounted]);
-
-  useEffect(() => {
-    if (isMounted) {
-      localStorage.setItem('uiLanguage', uiLanguage);
-    }
-  }, [uiLanguage, isMounted]);
 
   useEffect(() => {
     if (isMounted) {
@@ -186,9 +175,14 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     <SelectValue placeholder="Select language" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="JavaScript">JavaScript</SelectItem>
+                    <SelectItem value="TypeScript">TypeScript</SelectItem>
                     <SelectItem value="Node.js">Node.js</SelectItem>
                     <SelectItem value="Python">Python</SelectItem>
                     <SelectItem value="Go">Go</SelectItem>
+                    <SelectItem value="Java">Java</SelectItem>
+                    <SelectItem value="C#">C#</SelectItem>
+                    <SelectItem value="Ruby">Ruby</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

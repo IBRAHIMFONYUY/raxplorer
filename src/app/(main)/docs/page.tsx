@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -58,6 +58,14 @@ function SubmitButton() {
 export default function AutoDocsPage() {
   const [state, formAction] = useActionState(generateDocsAction, initialState);
   const { toast } = useToast();
+  const [creativity, setCreativity] = useState(0.5);
+
+  useEffect(() => {
+    const storedCreativity = localStorage.getItem('aiCreativity');
+    if (storedCreativity) {
+      setCreativity(parseFloat(storedCreativity));
+    }
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -71,6 +79,11 @@ Responses:
   - 404 Not Found: If the user with the specified ID does not exist.`,
     },
   });
+
+  const handleFormAction = (formData: FormData) => {
+    formData.append('creativity', creativity.toString());
+    formAction(formData);
+  };
 
   useEffect(() => {
     if (state.message && state.message !== 'Success') {
@@ -94,7 +107,7 @@ Responses:
         </CardHeader>
         <CardContent>
           <FormProvider {...form}>
-            <form action={formAction} className="space-y-6">
+            <form action={handleFormAction} className="space-y-6">
               <FormField
                 control={form.control}
                 name="prompt"

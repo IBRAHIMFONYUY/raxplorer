@@ -7,11 +7,13 @@ const formSchema = z.object({
   prompt: z
     .string()
     .min(10, 'Endpoint definition must be at least 10 characters long.'),
+  creativity: z.number().min(0).max(1),
 });
 
 export async function generateDocsAction(prevState: any, formData: FormData) {
   const validatedFields = formSchema.safeParse({
     prompt: formData.get('prompt'),
+    creativity: parseFloat(formData.get('creativity') as string),
   });
 
   if (!validatedFields.success) {
@@ -25,6 +27,7 @@ export async function generateDocsAction(prevState: any, formData: FormData) {
   try {
     const result = await generateApiDocumentation({
       endpointDefinitions: validatedFields.data.prompt,
+      creativity: validatedFields.data.creativity,
     });
     return {
       message: 'Success',

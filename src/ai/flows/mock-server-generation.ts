@@ -17,6 +17,7 @@ const GenerateMockApiInputSchema = z.object({
     .describe(
       'The OpenAPI specification or natural language description of the API.'
     ),
+  creativity: z.number().optional().describe('The creativity level for the AI. A value between 0 and 1.')
 });
 export type GenerateMockApiInput = z.infer<typeof GenerateMockApiInputSchema>;
 
@@ -51,7 +52,7 @@ const generateMockApiFlow = ai.defineFlow(
     outputSchema: GenerateMockApiOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input, { config: { temperature: input.creativity } });
     return output!;
   }
 );

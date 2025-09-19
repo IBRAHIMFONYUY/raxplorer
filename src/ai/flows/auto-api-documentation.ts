@@ -15,6 +15,7 @@ const GenerateApiDocumentationInputSchema = z.object({
   endpointDefinitions: z
     .string()
     .describe('The endpoint definitions to generate documentation for.'),
+  creativity: z.number().optional().describe('The creativity level for the AI. A value between 0 and 1.')
 });
 export type GenerateApiDocumentationInput = z.infer<typeof GenerateApiDocumentationInputSchema>;
 
@@ -58,7 +59,7 @@ const generateApiDocumentationFlow = ai.defineFlow(
     outputSchema: GenerateApiDocumentationOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input, { config: { temperature: input.creativity } });
     return output!;
   }
 );

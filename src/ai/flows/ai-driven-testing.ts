@@ -21,6 +21,7 @@ const GenerateTestCasesInputSchema = z.object({
     .string()
     .optional()
     .describe('The data model (e.g., JSON schema) for the request/response.'),
+  creativity: z.number().optional().describe('The creativity level for the AI. A value between 0 and 1.')
 });
 export type GenerateTestCasesInput = z.infer<typeof GenerateTestCasesInputSchema>;
 
@@ -94,7 +95,10 @@ const generateTestCasesFlow = ai.defineFlow(
     outputSchema: GenerateTestCasesOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    const {output} = await prompt(input, { config: { temperature: input.creativity } });
+    if (!output) {
+      throw new Error('Failed to generate test cases.');
+    }
+    return output;
   }
 );

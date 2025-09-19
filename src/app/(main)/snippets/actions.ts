@@ -8,6 +8,7 @@ const formSchema = z.object({
     .string()
     .min(10, 'Endpoint definition must be at least 10 characters long.'),
   language: z.enum(['JavaScript', 'TypeScript', 'Node.js', 'Python', 'Go', 'Java', 'C#', 'Ruby']),
+  creativity: z.number().min(0).max(1),
 });
 
 export async function generateSnippetAction(
@@ -17,6 +18,7 @@ export async function generateSnippetAction(
   const validatedFields = formSchema.safeParse({
     prompt: formData.get('prompt'),
     language: formData.get('language'),
+    creativity: parseFloat(formData.get('creativity') as string),
   });
 
   if (!validatedFields.success) {
@@ -31,6 +33,7 @@ export async function generateSnippetAction(
     const result = await generateCodeSnippet({
       endpointDefinition: validatedFields.data.prompt,
       language: validatedFields.data.language,
+      creativity: validatedFields.data.creativity,
     });
     return {
       message: 'Success',

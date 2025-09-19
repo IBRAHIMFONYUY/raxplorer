@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -66,14 +66,37 @@ function SubmitButton() {
 export default function CodeSnippetsPage() {
   const [state, formAction] = useActionState(generateSnippetAction, initialState);
   const { toast } = useToast();
+  const [creativity, setCreativity] = useState(0.5);
+  const [snippetLanguage, setSnippetLanguage] = useState<z.infer<typeof formSchema>['language']>('JavaScript');
+
+  useEffect(() => {
+    const storedCreativity = localStorage.getItem('aiCreativity');
+    if (storedCreativity) {
+      setCreativity(parseFloat(storedCreativity));
+    }
+    const storedSnippetLang = localStorage.getItem('snippetLanguage') as z.infer<typeof formSchema>['language'] | null;
+    if (storedSnippetLang) {
+      setSnippetLanguage(storedSnippetLang);
+      form.setValue('language', storedSnippetLang);
+    }
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       prompt: 'GET request to /api/v1/users to fetch a list of all users.',
-      language: 'JavaScript',
+      language: snippetLanguage,
     },
   });
+
+  useEffect(() => {
+    form.setValue('language', snippetLanguage);
+  }, [snippetLanguage, form]);
+
+  const handleFormAction = (formData: FormData) => {
+    formData.append('creativity', creativity.toString());
+    formAction(formData);
+  };
 
   useEffect(() => {
     if (state.message && state.message !== 'Success') {
@@ -97,7 +120,7 @@ export default function CodeSnippetsPage() {
         <CardContent>
           <FormProvider {...form}>
             <form
-              action={formAction}
+              action={handleFormAction}
               className="space-y-6"
             >
               <FormField

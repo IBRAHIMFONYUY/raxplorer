@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -60,6 +60,14 @@ export default function MockServerPage() {
     initialState
   );
   const { toast } = useToast();
+  const [creativity, setCreativity] = useState(0.5);
+
+  useEffect(() => {
+    const storedCreativity = localStorage.getItem('aiCreativity');
+    if (storedCreativity) {
+      setCreativity(parseFloat(storedCreativity));
+    }
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -93,6 +101,11 @@ components:
     },
   });
 
+  const handleFormAction = (formData: FormData) => {
+    formData.append('creativity', creativity.toString());
+    formAction(formData);
+  };
+
   useEffect(() => {
     if (state.message && state.message !== 'Success') {
       toast({
@@ -115,7 +128,7 @@ components:
         </CardHeader>
         <CardContent>
           <FormProvider {...form}>
-            <form action={formAction} className="space-y-6">
+            <form action={handleFormAction} className="space-y-6">
               <FormField
                 control={form.control}
                 name="prompt"

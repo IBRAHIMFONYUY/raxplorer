@@ -32,13 +32,19 @@ const GenerateChallengeOutputSchema = z.object({
 });
 export type GenerateChallengeOutput = z.infer<typeof GenerateChallengeOutputSchema>;
 
+const GenerateChallengeInputSchema = z.object({
+  creativity: z.number().optional().describe('The creativity level for the AI. A value between 0 and 1.')
+});
+export type GenerateChallengeInput = z.infer<typeof GenerateChallengeInputSchema>;
 
-export async function generateChallenge(): Promise<GenerateChallengeOutput> {
-  return generateChallengeFlow();
+
+export async function generateChallenge(input: GenerateChallengeInput): Promise<GenerateChallengeOutput> {
+  return generateChallengeFlow(input);
 }
 
 const prompt = ai.definePrompt({
   name: 'generateChallengePrompt',
+  input: {schema: GenerateChallengeInputSchema},
   output: {schema: GenerateChallengeOutputSchema},
   prompt: `You are an AI Mentor for an API learning platform. Your task is to generate a new, unique API challenge for a student. The challenge should be based on a common public API like JSONPlaceholder.
 
@@ -50,10 +56,11 @@ Generate a creative challenge that is interesting and educational. Provide a uni
 const generateChallengeFlow = ai.defineFlow(
   {
     name: 'generateChallengeFlow',
+    inputSchema: GenerateChallengeInputSchema,
     outputSchema: GenerateChallengeOutputSchema,
   },
-  async () => {
-    const {output} = await prompt();
+  async (input) => {
+    const {output} = await prompt(input, { config: { temperature: input.creativity } });
     return output!;
   }
 );

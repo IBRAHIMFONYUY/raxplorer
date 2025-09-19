@@ -13,6 +13,7 @@ import {z} from 'genkit';
 
 const GenerateRequestInputSchema = z.object({
   prompt: z.string().describe('The natural language prompt describing the API request.'),
+  creativity: z.number().optional().describe('The creativity level for the AI. A value between 0 and 1.')
 });
 export type GenerateRequestInput = z.infer<typeof GenerateRequestInputSchema>;
 
@@ -54,7 +55,7 @@ const generateRequestFlow = ai.defineFlow(
     outputSchema: GenerateRequestOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input, { config: { temperature: input.creativity } });
     return output!;
   }
 );
