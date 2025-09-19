@@ -49,9 +49,11 @@ const initialState = {
 
 function SubmitButton() {
   const { formState } = useFormContext();
+  const isSubmitting = formState.isSubmitting;
+
   return (
-    <Button type="submit" disabled={formState.isSubmitting}>
-      {formState.isSubmitting ? (
+    <Button type="submit" disabled={isSubmitting}>
+      {isSubmitting ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Generating...
@@ -69,6 +71,16 @@ export default function CodeSnippetsPage() {
   const [creativity, setCreativity] = useState(0.5);
   const [snippetLanguage, setSnippetLanguage] = useState<z.infer<typeof formSchema>['language']>('JavaScript');
 
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      prompt: 'GET request to /api/v1/users to fetch a list of all users.',
+      language: snippetLanguage,
+    },
+  });
+  
+  const { handleSubmit, formState } = form;
+
   useEffect(() => {
     const storedCreativity = localStorage.getItem('aiCreativity');
     if (storedCreativity) {
@@ -81,19 +93,15 @@ export default function CodeSnippetsPage() {
     }
   }, []);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      prompt: 'GET request to /api/v1/users to fetch a list of all users.',
-      language: snippetLanguage,
-    },
-  });
 
   useEffect(() => {
     form.setValue('language', snippetLanguage);
   }, [snippetLanguage, form]);
 
-  const handleFormAction = (formData: FormData) => {
+  const handleFormAction = (data: z.infer<typeof formSchema>) => {
+    const formData = new FormData();
+    formData.append('prompt', data.prompt);
+    formData.append('language', data.language);
     formData.append('creativity', creativity.toString());
     formAction(formData);
   };
@@ -120,7 +128,7 @@ export default function CodeSnippetsPage() {
         <CardContent>
           <FormProvider {...form}>
             <form
-              action={handleFormAction}
+              onSubmit={handleSubmit(handleFormAction)}
               className="space-y-6"
             >
               <FormField
@@ -185,9 +193,14 @@ export default function CodeSnippetsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="h-full min-h-[400px] w-full overflow-auto rounded-lg bg-gray-900 p-4 text-gray-300 whitespace-pre-wrap">
+          <pre className="h-full min-h-[400px] w-full overflow-auto rounded-lg bg-secondary p-4 text-secondary-foreground whitespace-pre-wrap">
             <code className="font-code text-sm">
-              {state.data ? state.data : 'Awaiting generation...'}
+              {formState.isSubmitting && !state.data ? (
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    <p>Generating snippet...</p>
+                </div>
+              ) : state.data ? state.data : 'Awaiting generation...'}
             </code>
           </pre>
         </CardContent>

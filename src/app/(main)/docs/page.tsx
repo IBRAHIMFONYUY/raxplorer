@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -24,7 +24,6 @@ import {
 import { generateDocsAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
 
 const formSchema = z.object({
   prompt: z
@@ -41,9 +40,11 @@ const initialState = {
 
 function SubmitButton() {
   const { formState } = useFormContext();
+  const isSubmitting = formState.isSubmitting;
+
   return (
-    <Button type="submit" disabled={formState.isSubmitting}>
-      {formState.isSubmitting ? (
+    <Button type="submit" disabled={isSubmitting}>
+      {isSubmitting ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Generating...
@@ -60,13 +61,6 @@ export default function AutoDocsPage() {
   const { toast } = useToast();
   const [creativity, setCreativity] = useState(0.5);
 
-  useEffect(() => {
-    const storedCreativity = localStorage.getItem('aiCreativity');
-    if (storedCreativity) {
-      setCreativity(parseFloat(storedCreativity));
-    }
-  }, []);
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -80,10 +74,21 @@ Responses:
     },
   });
 
-  const handleFormAction = (formData: FormData) => {
+  const { formState, handleSubmit } = form;
+
+  const handleFormAction = (data: z.infer<typeof formSchema>) => {
+    const formData = new FormData();
+    formData.append('prompt', data.prompt);
     formData.append('creativity', creativity.toString());
     formAction(formData);
   };
+  
+  useEffect(() => {
+    const storedCreativity = localStorage.getItem('aiCreativity');
+    if (storedCreativity) {
+      setCreativity(parseFloat(storedCreativity));
+    }
+  }, []);
 
   useEffect(() => {
     if (state.message && state.message !== 'Success') {
@@ -107,7 +112,10 @@ Responses:
         </CardHeader>
         <CardContent>
           <FormProvider {...form}>
-            <form action={handleFormAction} className="space-y-6">
+            <form
+              onSubmit={handleSubmit(handleFormAction)}
+              className="space-y-6"
+            >
               <FormField
                 control={form.control}
                 name="prompt"
@@ -138,9 +146,14 @@ Responses:
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="prose prose-sm prose-invert max-w-none rounded-lg border bg-card-foreground/5 p-4 h-full min-h-[400px]">
-             {state.data ? (
-              <div dangerouslySetInnerHTML={{ __html: state.data.replace(/\n/g, '<br />') }} />
+           <div className="prose prose-sm dark:prose-invert max-w-none rounded-lg border bg-card-foreground/5 p-4 h-full min-h-[400px]">
+             {formState.isSubmitting && !state.data ? (
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    <p>Generating documentation...</p>
+                </div>
+             ) : state.data ? (
+              <div dangerouslySetInnerHTML={{ __html: (state.data as string).replace(/\n/g, '<br />').replace(/### (.*)/g, '<h3 class="text-lg font-semibold">$1</h3>').replace(/## (.*)/g, '<h2 class="text-xl font-bold">$1</h2>').replace(/# (.*)/g, '<h1 class="text-2xl font-bold">$1</h1>') }} />
             ) : (
               <p className="text-muted-foreground">Awaiting generation...</p>
             )}

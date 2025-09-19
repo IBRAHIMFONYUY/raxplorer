@@ -179,7 +179,10 @@ export default function ChallengesPage() {
                   Generating Quest...
                 </>
               ) : (
-                'Generate New AI Challenge'
+                <>
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  Generate New AI Challenge
+                </>
               )}
             </Button>
           </form>

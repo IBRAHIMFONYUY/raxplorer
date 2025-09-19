@@ -40,9 +40,11 @@ const initialState = {
 
 function SubmitButton() {
   const { formState } = useFormContext();
+  const isSubmitting = formState.isSubmitting;
+
   return (
-    <Button type="submit" disabled={formState.isSubmitting}>
-      {formState.isSubmitting ? (
+    <Button type="submit" disabled={isSubmitting}>
+      {isSubmitting ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Generating...
@@ -101,7 +103,11 @@ components:
     },
   });
 
-  const handleFormAction = (formData: FormData) => {
+  const { handleSubmit, formState } = form;
+
+  const handleFormAction = (data: z.infer<typeof formSchema>) => {
+    const formData = new FormData();
+    formData.append('prompt', data.prompt);
     formData.append('creativity', creativity.toString());
     formAction(formData);
   };
@@ -128,7 +134,7 @@ components:
         </CardHeader>
         <CardContent>
           <FormProvider {...form}>
-            <form action={handleFormAction} className="space-y-6">
+            <form onSubmit={handleSubmit(handleFormAction)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="prompt"
@@ -161,7 +167,12 @@ components:
         <CardContent>
           <pre className="h-full min-h-[400px] w-full overflow-auto rounded-lg bg-secondary p-4 whitespace-pre-wrap">
             <code className="font-code text-sm text-secondary-foreground">
-              {state.data ? state.data : 'Awaiting generation...'}
+              {formState.isSubmitting && !state.data ? (
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    <p>Generating mock server...</p>
+                </div>
+              ) : state.data ? state.data : 'Awaiting generation...'}
             </code>
           </pre>
         </CardContent>

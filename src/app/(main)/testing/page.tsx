@@ -47,9 +47,11 @@ const initialState = {
 
 function SubmitButton() {
   const { formState } = useFormContext();
+  const isSubmitting = formState.isSubmitting;
+
   return (
-    <Button type="submit" disabled={formState.isSubmitting}>
-      {formState.isSubmitting ? (
+    <Button type="submit" disabled={isSubmitting}>
+      {isSubmitting ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Generating...
@@ -89,7 +91,14 @@ export default function AiTestingPage() {
     },
   });
 
-  const handleFormAction = (formData: FormData) => {
+  const { handleSubmit, formState } = form;
+
+  const handleFormAction = (data: z.infer<typeof formSchema>) => {
+    const formData = new FormData();
+    formData.append('apiDefinition', data.apiDefinition);
+    if (data.dataModel) {
+      formData.append('dataModel', data.dataModel);
+    }
     formData.append('creativity', creativity.toString());
     formAction(formData);
   };
@@ -115,7 +124,7 @@ export default function AiTestingPage() {
         </CardHeader>
         <CardContent>
           <FormProvider {...form}>
-            <form action={handleFormAction} className="space-y-6">
+            <form onSubmit={handleSubmit(handleFormAction)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="apiDefinition"
@@ -163,9 +172,14 @@ export default function AiTestingPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {state.data ? (
+          {formState.isSubmitting && !state.data ? (
+            <div className="flex items-center justify-center rounded-lg border p-8 h-full min-h-[400px]">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <p className="text-muted-foreground">Generating test cases...</p>
+            </div>
+          ) : state.data ? (
              <Accordion type="single" collapsible className="w-full">
-              {state.data.map((testCase: any, index: number) => (
+              {(state.data as any[]).map((testCase: any, index: number) => (
                 <AccordionItem value={`item-${index}`} key={index}>
                   <AccordionTrigger>
                     <div className="flex items-center gap-4">

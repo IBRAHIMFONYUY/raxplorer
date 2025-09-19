@@ -694,10 +694,14 @@ export function ApiPlayground() {
               disabled={isAiPending}
             />
             <Button type="submit" disabled={isAiPending}>
-              {isAiPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {isAiPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                'Generate & Run'
               )}
-              {isAiPending ? 'Generating...' : 'Generate & Run'}
             </Button>
           </form>
         </CardContent>
