@@ -38,6 +38,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 type KeyValue = {
   key: string;
@@ -413,8 +419,8 @@ export default function ApiPlaygroundPage() {
         <h3 className="font-semibold text-base mb-2">Request</h3>
         <div className="space-y-1">
           <div><span className="font-medium">Method:</span> <Badge variant="outline">{item.method}</Badge></div>
-          <p className="font-medium">URL:</p>
-          <p className="font-code bg-secondary p-2 rounded-md break-all">{item.url}</p>
+          <div className="font-medium">URL:</div>
+          <div className="font-code bg-secondary p-2 rounded-md break-all">{item.url}</div>
         </div>
       </div>
       
@@ -470,53 +476,9 @@ export default function ApiPlaygroundPage() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100vh-5rem)] gap-4">
-      <Card className="w-full md:w-1/3 lg:w-1/4 flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5"/> History</CardTitle>
-           <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
-        </CardHeader>
-        <CardContent className="flex-grow p-0 overflow-hidden">
-           <ScrollArea className="h-full">
-            {history.length > 0 ? (
-              <div className="space-y-1 p-2">
-              {history.map(item => (
-                <Dialog key={item.id}>
-                  <DialogTrigger asChild>
-                    <button className="w-full text-left p-2 rounded-md hover:bg-secondary">
-                      <div className="flex justify-between items-center">
-                        <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground truncate">{item.url}</p>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
-                    </button>
-                  </DialogTrigger>
-                   <DialogContent className="max-w-4xl max-h-[80vh]">
-                    <DialogHeader>
-                      <DialogTitle>History Details</DialogTitle>
-                       <CardDescription>
-                         A detailed view of the request and response from {new Date(parseInt(item.id)).toLocaleString()}.
-                         <Button size="sm" variant="outline" className="ml-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
-                       </CardDescription>
-                    </DialogHeader>
-                    <div className="overflow-y-auto">
-                      <HistoryItemDetails item={item} />
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              ))}
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center">
-                <p className="text-muted-foreground text-sm">No history yet</p>
-              </div>
-            )}
-           </ScrollArea>
-        </CardContent>
-      </Card>
-      <div className="w-full md:w-2/3 lg:w-3/4 flex flex-col gap-4 overflow-hidden">
-        <Card className="flex-shrink-0">
+    <div className="flex flex-col h-full gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-shrink-0">
+        <Card>
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-center gap-2">
               <Select value={method} onValueChange={setMethod}>
@@ -543,7 +505,7 @@ export default function ApiPlaygroundPage() {
               </Button>
             </div>
              <Tabs defaultValue="params" className="mt-4">
-              <TabsList className="w-full sm:w-auto overflow-x-auto">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="params">Params</TabsTrigger>
                 <TabsTrigger value="auth">Authorization</TabsTrigger>
                 <TabsTrigger value="headers">Headers</TabsTrigger>
@@ -588,19 +550,21 @@ export default function ApiPlaygroundPage() {
                 />
               </TabsContent>
               <TabsContent value="body" className="mt-4">
-                <Textarea
-                  placeholder='{ "key": "value" }'
-                  className="min-h-[150px] font-code"
-                  value={body}
-                  onChange={e => setBody(e.target.value)}
-                  disabled={method === 'GET' || method === 'HEAD'}
-                />
+                 <ScrollArea className="h-40 w-full">
+                  <Textarea
+                    placeholder='{ "key": "value" }'
+                    className="min-h-[150px] font-code"
+                    value={body}
+                    onChange={e => setBody(e.target.value)}
+                    disabled={method === 'GET' || method === 'HEAD'}
+                  />
+                </ScrollArea>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
 
-        <div className="flex-grow overflow-auto">
+        <div className="flex-grow overflow-auto min-h-[400px]">
           {isLoading && (
             <div className="flex items-center justify-center rounded-lg border h-full">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -645,11 +609,13 @@ export default function ApiPlaygroundPage() {
                     </TabsList>
                   </div>
                   <TabsContent value="body" className="mt-4 flex-grow overflow-auto px-6 pb-6">
-                    <pre className="w-full h-full overflow-auto rounded-md bg-secondary p-4 text-sm">
-                      <code className="font-code text-secondary-foreground">
-                        {response.body}
-                      </code>
-                    </pre>
+                    <ScrollArea className="h-full">
+                      <pre className="w-full overflow-auto rounded-md bg-secondary p-4 text-sm">
+                        <code className="font-code text-secondary-foreground">
+                          {response.body}
+                        </code>
+                      </pre>
+                    </ScrollArea>
                   </TabsContent>
                   <TabsContent value="headers" className="mt-4 flex-grow overflow-auto px-6 pb-6">
                     <Table>
@@ -698,8 +664,65 @@ export default function ApiPlaygroundPage() {
           )}
         </div>
       </div>
+      
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="history">
+          <AccordionTrigger>
+             <div className="flex items-center gap-2 text-lg font-semibold">
+                <History className="h-5 w-5"/>
+                <span>History</span>
+              </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <Card>
+               <CardHeader className="flex flex-row items-center justify-between">
+                <CardDescription>A list of your 20 most recent API requests.</CardDescription>
+                <Button variant="ghost" size="sm" onClick={() => setHistory([])} disabled={history.length === 0}>Clear</Button>
+              </CardHeader>
+              <CardContent>
+                {history.length > 0 ? (
+                  <ScrollArea className="h-48">
+                    <div className="space-y-1">
+                      {history.map(item => (
+                        <Dialog key={item.id}>
+                          <DialogTrigger asChild>
+                            <button className="w-full text-left p-2 rounded-md hover:bg-secondary">
+                              <div className="flex justify-between items-center">
+                                <span className={`font-bold ${item.method === 'GET' ? 'text-blue-400' : 'text-green-400'}`}>{item.method}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs ${item.status >= 200 && item.status < 300 ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>{item.status}</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">{item.url}</p>
+                              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3 w-3" />{item.time}</div>
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-3xl">
+                            <DialogHeader>
+                              <DialogTitle>History Details</DialogTitle>
+                              <CardDescription>
+                                A detailed view of a request from {new Date(parseInt(item.id)).toLocaleString()}.
+                                <Button size="sm" variant="outline" className="ml-4" onClick={() => {loadFromHistory(item)}}>Load Request</Button>
+                              </CardDescription>
+                            </DialogHeader>
+                            <ScrollArea className="max-h-[60vh]">
+                              <div className="p-1">
+                                <HistoryItemDetails item={item} />
+                              </div>
+                            </ScrollArea>
+                          </DialogContent>
+                        </Dialog>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="h-full flex items-center justify-center p-8">
+                    <p className="text-muted-foreground text-sm">No history yet. Your requests will appear here.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }
-
-    
