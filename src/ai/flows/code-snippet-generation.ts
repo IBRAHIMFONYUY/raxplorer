@@ -39,6 +39,8 @@ const prompt = ai.definePrompt({
   output: {schema: CodeSnippetOutputSchema},
   prompt: `You are an expert code generation assistant. Your task is to generate a concise code snippet for making an API request in a specified language. The snippet should be self-contained and ready to run.
 
+Your output must be a JSON object with a single key "codeSnippet", where the value is the generated code snippet as a single block of text.
+
 Generate a code snippet for the following API request:
 
 Endpoint Definition:
@@ -47,7 +49,7 @@ Endpoint Definition:
 Programming Language:
 {{{language}}}
 
-Please provide only the code snippet as a single block of text.`,
+Provide the code snippet now.`,
 });
 
 const generateCodeSnippetFlow = ai.defineFlow(
